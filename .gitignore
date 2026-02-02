@@ -19,21 +19,34 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+pip-wheel-metadata/
+.ruff_cache/
+.pytype/
+.coverage
+.coverage.*
+.pyright/
+.pyre/
+.cache/
 
-# 가상환경
+# Virtual environments 
+.venv/
 venv/
 env/
 ENV/
 virtualenv/
+.conda/
 
 # 환경변수 (절대 커밋하지 말 것!)
 .env
+.env.*
+!.env.example
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.iml
 *.sublime-project
 *.sublime-workspace
 
@@ -48,6 +61,9 @@ app/reports/*
 # 벡터 DB
 app/chroma_db/*
 !app/chroma_db/.gitkeep
+*.sqlite3
+*.db
+*.pid
 
 # OS 파일
 .DS_Store
@@ -63,7 +79,7 @@ Thumbs.db
 logs/
 
 # Jupyter Notebook
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 # pytest
 .pytest_cache/

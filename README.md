@@ -15,9 +15,37 @@
 
 ## 실행
 
+1) 사전 준비
+	•	Python 3.11+ (권장: 3.12)
+	•	(선택) curl 또는 Postman
+
+2) 가상환경 생성 및 활성화
+
+```bash
+python -m venv .venv
+# macOS / Linux
+source .venv/bin/activate
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+```
+
+3) 의존성 설치
+
 ```bash
 pip install -r requirements.txt
+```
+
+4) 환경변수 설정
+
+.env.example을 복사해서 .env를 만들고 값을 채웁니다.
+
+```bash
 cp .env.example .env
+```
+
+5) 서버 실행
+
+```bash
 uvicorn app.main:app --reload
 ```
 
