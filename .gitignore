@@ -1,0 +1,56 @@
+# ==== Python bytecode / cache ====
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.pytype/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+.pyre/
+.pyright/
+*.log
+
+# ==== Virtual environments ====
+.venv/
+venv/
+ENV/
+env/
+.conda/
+
+# ==== Packaging / build artifacts ====
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# ==== Environment variables / secrets ====
+.env
+.env.*
+!.env.example
+
+# ==== Local config / runtime ====
+*.sqlite3
+*.db
+*.pid
+
+# ==== IDE / Editor ====
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+
+# ==== OS files ====
+.DS_Store
+Thumbs.db
+
+# ==== Jupyter ====
+.ipynb_checkpoints/
+
+# ==== Docker local overrides ====
+docker-compose.override.yml
