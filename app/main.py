@@ -21,6 +21,8 @@ class CaseRequest(BaseModel):
     case_id: str
     title: str
     description: str
+    occured_at: Optional[str] = None
+    location: str
 
 class CaseSummaryResponse(BaseModel):
     case_id: str
@@ -28,6 +30,10 @@ class CaseSummaryResponse(BaseModel):
 
 
 # ---------- LEGAL ISSUE ----------
+class LegalIssue(BaseModel):
+    issue_name: str
+    related_law: str
+
 class LegalIssueRequest(BaseModel):
     case_id: str
     summary: Dict[str, Any]
@@ -41,13 +47,13 @@ class LegalIssueResponse(BaseModel):
 # ---------- LEGAL CRITERIA ----------
 class LegalCriteriaItem(BaseModel):
     criterion_text: str
-    precedent_case_no: Optional[str]
-    precedent_decision_date: Optional[str]
+    precedent_case_no: Optional[List[str]] = None
+    precedent_decision_date: Optional[List[str]] = None
 
 class LegalCriteriaRequest(BaseModel):
     case_id: str
     summary: Dict[str, Any]
-    legal_issue: Dict[str, Any]
+    legal_issue: LegalIssue
 
 class LegalCriteriaResponse(BaseModel):
     case_id: str
@@ -81,15 +87,20 @@ class CriteriaEvaluationResponse(BaseModel):
 @app.post("/cases/summary", response_model=CaseSummaryResponse)
 def generate_case_summary(case: CaseRequest):
 
-    # ✅ 당신 코랩의 structure_case 연결 지점
     from app.pipeline import structure_case
 
+    # 1️⃣ LLM으로 구조화 요약 생성 (행위/객체/결과 중심)
     summary = structure_case({
         "case_id": case.case_id,
         "title": case.title,
         "description": case.description
     })
 
+    # 2️⃣ Spring 필드 → AI summary에 매핑 (핵심 변경 부분)
+    summary["시간"] = case.occured_at.replace("T", " ")
+    summary["장소"] = case.location
+
+    # 3️⃣ 그대로 반환
     return {
         "case_id": case.case_id,
         "summary": summary
@@ -125,7 +136,10 @@ def generate_legal_criteria(req: LegalCriteriaRequest):
 
     criteria = build_legal_criteria(
         case_summary=req.summary,
-        legal_issue=req.legal_issue
+        legal_issue={
+        "issue_name": req.legal_issue.issue_name,
+        "related_law": req.legal_issue.related_law
+        }
     )
 
     return {
