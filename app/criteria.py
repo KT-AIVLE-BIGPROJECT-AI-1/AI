@@ -185,25 +185,44 @@ def extract_and_filter_criteria(reranked, case_summary, legal_issue, keywords):
         "직업", "가정사", "성격"
     ]
 
+    EXCLUDE_KEYWORDS = [
+    "분리조치", "응급조치", "가정폭력", "적법", 
+    "큰 소리", "고성", "언행", "수사", "절차",
+    "영장", "현수막", "과도", "탄원", "반성"
+    ]
+
+    CRIME_EXCLUDE = [
+        "상해", "절도", "강도", "침입", "방화", "사기", "횡령", "배임"
+    ]
+
     for p in reranked:
         prompt = f"""
-당신은 형사 판례에서 **구성요건 판단에 직접 쓰인 사실요소만** 추출한다.
+당신은 판례에서 **구성요건 판단에 필요한 사실요소만 추출하고,
+사건 특정 표현은 반드시 일반화(추상화)** 한다.
 
-허용 범위(이것만 뽑을 것):
-- 행위: 어떤 유형력을 행사했는지
-- 객체: 타인의 재물인지 여부
-- 결과: 손괴 또는 효용 침해가 있었는지
-- 인식/고의: 손괴 의사 또는 인식이 있었는지
-- 인과: 행위와 결과의 연결관계
+🚫 절대 금지:
+- 금액, 모델명, 장소명, 도구명, 날짜 등 사건 고유 정보
+- 양형 사유(전과, 반성, 합의, 탄원)
+- 수사 절차 적법성(출동, 분리조치, 영장 등)
+- 특별법 논점(가정폭력처벌법, 도로교통법 등)
 
-절대 금지(하나라도 포함 시 해당 항목 삭제):
-- 전과/범죄경력/음주 관련 요소
-- 양형 사유(반성, 합의, 선처, 탄원 등)
-- 다른 범죄(폭행, 음주운전 등)의 판단요소
-- 인적사항(직업, 가정사, 성격 등)
+✅ 반드시 일반화할 것:
+예)
+- ❌ “155만 원 휴대전화를 바닥에 던졌는지”
+- ✅ “타인의 재물을 물리적으로 훼손하는 행위가 있었는지”
 
-출력은 **체크리스트가 아니라**
-“판례에서 드러난 사실요소 문장”만 간단히 나열.
+허용 프레임(이 네 가지만):
+1) 행위: 피의자가 무엇을 했는지(물리적 행위)
+2) 객체: 그 행위의 대상이 무엇인지
+3) 결과: 구체적 피해·침해가 있었는지
+4) 인식: 피의자가 결과를 인식했는지
+
+📌 형식 규칙:
+- 반드시 체크리스트 문장
+- “~였는지 확인”
+- “~가 있었는지 검토”
+- “~가 인정되는지 확인”
+만 허용
 
 JSON:
 {{ "criteria": [] }}
@@ -213,8 +232,10 @@ JSON:
 {legal_issue["related_law"]}
 
 [판례 본문]
-{p["body"]}
+{p["판결이유"]}
 """
+
+
         res = call_llm_json(prompt)
 
         # === 🔍 디버그용 (필요하면 켜두세요) ===
@@ -227,8 +248,15 @@ JSON:
             if not text:
                 continue
 
+            if any(k in text for k in EXCLUDE_KEYWORDS):
+                continue
+
             # 블랙리스트 필터
             if any(b in text for b in BLACKLIST):
+                continue
+            
+            # 범죄 혼입 방지 필터
+            if any(c in text for c in CRIME_EXCLUDE):
                 continue
 
             all_criteria.append({
@@ -284,10 +312,47 @@ def derive_common_criteria(all_criteria):
 # 3️⃣ anchor 기준 확장
 # ======================================================
 
-def expand_criteria_from_anchor(common_criteria, case_summary, legal_issue):
+def expand_criteria_from_anchor(common_criteria, case_summary, legal_issue, case_types):
+    anchor_texts = [
+        c["criterion_text"]
+        for c in common_criteria.get("common_criteria", [])
+        if isinstance(c, dict) and c.get("criterion_text")
+    ]
+
     prompt = f"""
-anchor 기준 확장
-JSON: {{"expanded_criteria": []}}
+당신은 경찰 수사 실무용 체크리스트 생성 AI이다.
+
+아래는 판례에서 검증된 핵심 판단 기준(anchor)이다:
+{anchor_texts}
+
+아래 사건을 판단할 때,
+**오직 아래 법리 쟁점과 직접 관련된 사실 확인 기준만**
+3~5개 생성하라.
+
+🚫 절대 금지:
+- 범죄 유형을 임의로 바꾸지 말 것
+- '정당성', '적법성', '책임', '양형' 개념 사용 금지
+- 절차(출동, 영장, 분리조치) 금지
+- 사건 세부 물건명(지갑, 차량, 현수막 등) 고정 금지
+
+✅ 필수 형식 (중 하나만 사용):
+• "~였는지 확인"
+• "~가 있었는지 검토"
+• "~가 인정되는지 확인"
+
+
+[현재 사건 요약]
+{case_summary}
+
+[사건 유형]
+{case_types}
+
+[법리 쟁점]
+{legal_issue["issue_name"]}
+{legal_issue["related_law"]}
+
+출력(JSON):
+{{ "expanded_criteria": [] }}
 """
     result = call_llm_json(prompt)
     return result.get("expanded_criteria", [])
@@ -347,7 +412,7 @@ def make_criteria_rows(common_criteria, precedent_bodies, expanded):
             # 선고일자 찾기
             decision_date = None
             for pb in precedent_bodies:
-                if pb.get("precedent_case_no") == case_no:
+                if str(pb.get("precedent_case_no")) == str(case_no):
                     decision_date = pb.get("precedent_decision_date")
                     break
 
@@ -375,10 +440,12 @@ def make_criteria_rows(common_criteria, precedent_bodies, expanded):
         date_list = v["precedent_decision_date"]
 
         # 날짜 리스트 정리 (🔥 핵심 로직)
-        if not date_list or any(d is None for d in date_list):
-            clean_dates = None
-        else:
-            clean_dates = date_list
+        # None 제거하고 실제 날짜만 남김
+        clean_dates = [d for d in date_list if d]
+
+        # 전부 비어 있으면 null, 아니면 리스트 유지
+        clean_dates = clean_dates if clean_dates else None
+        
 
         row = {
             "criterion_text": v["criterion_text"],

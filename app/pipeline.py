@@ -67,17 +67,38 @@ JSON:
 """
     return call_llm_json(prompt)
 
+def infer_case_types(case_summary):
+    prompt = f"""
+아래 사건을 보고 해당하는 범죄 유형을 모두 선택하라.
+
+선택 가능 범주:
+["절도","강도","상해","폭행","손괴","재물손괴",
+ "사기","횡령","배임","도주","침입","방화"]
+
+⚠️ 복수 선택 가능
+
+JSON:
+{{ "case_types": [] }}
+
+사건 요약:
+{case_summary}
+"""
+    return call_llm_json(prompt)["case_types"]
+
+
 
 # ==============================
 # ③ LEGAL CRITERIA 전체 파이프라인
 # ==============================
 def build_legal_criteria(case_summary: Dict[str, Any], legal_issue: Dict[str, Any]) -> List[Dict[str, Any]]:
+    
+    case_types = infer_case_types(case_summary)
 
     # 1) 키워드 생성
     keywords = derive_precedent_search_keywords(case_summary, legal_issue)
 
     # 2) 제목 기반 후보 검색
-    title_candidates = search_precedents_by_title(case_summary, legal_issue, keywords)
+    title_candidates = search_precedents_by_title(case_summary, legal_issue, keywords, case_types)
 
     # 3) 판례 본문 수집
     precedent_bodies = fetch_precedent_bodies(title_candidates)
@@ -101,7 +122,7 @@ def build_legal_criteria(case_summary: Dict[str, Any], legal_issue: Dict[str, An
 
     # 7) anchor 기반 확장
     expanded = expand_criteria_from_anchor(
-        common_criteria, case_summary, legal_issue
+        common_criteria, case_summary, legal_issue, case_types
     )
 
     # 8) 최종 LEGAL_CRITERIA 행 생성
