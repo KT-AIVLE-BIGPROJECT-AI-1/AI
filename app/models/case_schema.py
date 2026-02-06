@@ -1,7 +1,10 @@
 # app/models/case_schema.py
+# =========================
+# 수정 필요
+# =========================
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 
@@ -22,14 +25,19 @@ class CaseRequest(BaseModel):
     location: str = Field(..., description="발생 장소")
 
 
-class CaseResponse(BaseModel):
-    case_id: str
-    title: str
-    description: str
-    type: str
-    occurred_at: str
-    location: str
-    summary: CaseSummary
-    status: str = "OPEN"
-    created_at: str
-    updated_at: str
+# class CaseResponse(BaseModel):
+#     case_id: str
+#     title: str
+#     description: str
+#     type: str
+#     occurred_at: str
+#     location: str
+#     summary: CaseSummary
+#     status: str = "OPEN"
+#     created_at: str
+#     updated_at: str
+
+
+class CaseSummaryResponse(BaseModel):
+    summary: Dict[str, Any]
+

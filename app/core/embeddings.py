@@ -1,4 +1,7 @@
 # app/core/embeddings.py
+# =========================
+# 수정 필요
+# =========================
 
 import json
 import pickle

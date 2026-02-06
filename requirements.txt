@@ -12,24 +12,12 @@ python-dotenv==1.0.0
 pydantic-settings==2.1.0
 pydantic==2.5.3
 
-# PDF ??
+# PDF & 데이터 처리
 PyPDF2==3.0.1
 pdfplumber==0.11.0
 reportlab==4.0.9
-
-# ?? ??
-python-docx==1.1.0
-openpyxl==3.1.2
-
-# ??? ??
 pandas==2.1.4
 numpy==1.26.3
-
-
-# HTTP ?? (REST API)
-requests>=2.31.0
-httpx
-tenacity
 
 # PyTorch (extra index? ??)
 --extra-index-url https://download.pytorch.org/whl/cpu
@@ -37,8 +25,25 @@ torch>=2.6.0
 torchvision>=0.21.0
 torchaudio>=2.6.0
 
-# ???
+# ?? ??
+python-docx==1.1.0
+openpyxl==3.1.2
+
+# HTTP ?? (REST API)
+requests>=2.31.0
+httpx
+tenacity
+
+# LangChain + Chroma (RAG)
+langchain
+langchain-openai
+langchain-chroma
+chromadb
+langchain-text-splitters
+
+# 임베딩 / 검색
 sentence-transformers>=3.3.0
+rank-bm25
 
 # ????
 Pillow==10.2.0

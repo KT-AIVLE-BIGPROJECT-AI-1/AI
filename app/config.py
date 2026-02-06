@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+# load_dotenv(BASE_DIR / ".env")
 
 class Settings(BaseSettings):
     # API Keys
@@ -36,9 +37,11 @@ class Settings(BaseSettings):
     
     # 파일 경로
     CRIMINAL_LAW_PDF: Path = DATA_DIR / "criminal_law.pdf"
+    # CRIMINAL_LAW_PATH = DATA_DIR / "criminal_law.pdf"
     PRECEDENT_CSV: Path = DATA_DIR / "판례목록.csv"  # ✅ CSV 파일
     RAG_INDEX_PATH: Path = DATA_DIR / "criminal_law_rag_index.pkl"
     PRECEDENT_CACHE_PATH: Path = DATA_DIR / "precedent_embeddings.pt"
+    # PRECEDENT_EMBEDDING_CACHE = DATA_DIR / "precedent_embeddings.pt"
     
     # PDF 설정
     POLICE_LOGO_PATH: Path = IMAGES_DIR / "police_logo.png"
@@ -59,3 +62,15 @@ for directory in [
     settings.REPORTS_DIR,
 ]:
     directory.mkdir(parents=True, exist_ok=True)
+
+
+
+
+
+
+
+
+
+
+
+
