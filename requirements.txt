@@ -1,4 +1,35 @@
-fastapi[standard]
-pydantic-settings
-httpx
-tenacity
+# FastAPI 및 웹 서버
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# AI/ML
+openai==1.12.0
+google-generativeai==0.3.2
+transformers==4.37.2
+torch==2.1.2
+
+# 문서 처리
+pdfplumber==0.10.3
+python-docx==1.1.0
+openpyxl==3.1.2
+PyPDF2==3.0.1
+reportlab==4.0.9
+
+# 이미지/비디오 처리
+Pillow==10.2.0
+opencv-python-headless==4.9.0.80
+pytesseract==0.3.10
+
+# 음성 처리
+faster-whisper==0.10.0
+pydub==0.25.1
+
+# 벡터 DB
+chromadb==0.4.22
+
+# 기타
+python-dotenv==1.0.1
+aiofiles==23.2.1
