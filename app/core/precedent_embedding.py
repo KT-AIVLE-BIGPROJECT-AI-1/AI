@@ -49,10 +49,14 @@ class PrecedentIndex:
         print("💾 판례 임베딩 캐시 저장 완료")
 
     def load_cache(self):
-        data = torch.load(PRECEDENT_EMBEDDING_CACHE)
+        data = torch.load(
+            PRECEDENT_EMBEDDING_CACHE,
+            weights_only=False   # ⭐
+        )
         self.embeddings = data["embeddings"]
         self.pool_df = data["pool_df"]
         print("📂 판례 임베딩 캐시 로드 완료")
+
 
     def init_index(self):
         if os.path.exists(PRECEDENT_EMBEDDING_CACHE):

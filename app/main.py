@@ -12,33 +12,69 @@ from app.config import (
     OPENAI_API_KEY
 )
 
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     print("🚀 서버 시작 → 초기 데이터 로드")
+
+#     # 1) 형법 RAG
+#     client = OpenAI(api_key=OPENAI_API_KEY)
+#     rag = CriminalLawRAG(client)
+
+#     if RAG_INDEX_PATH.exists():
+#         rag.load_index(str(RAG_INDEX_PATH))
+#     else:
+#         rag.build_index(str(CRIMINAL_LAW_PATH))
+#         rag.save_index(str(RAG_INDEX_PATH))
+
+#     # 2) 판례 임베딩
+#     precedent_index = PrecedentIndex()
+#     precedent_index.init_index()
+
+#     # 전역 저장
+#     app.state.client = client
+#     app.state.criminal_law_rag = rag
+#     app.state.precedent_index = precedent_index
+
+#     print("초기화 완료-서버 준비됨")
+
+#     yield
+#     print("🛑 서버 종료")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("🚀 서버 시작 → 초기 데이터 로드")
 
-    # 1) 형법 RAG
     client = OpenAI(api_key=OPENAI_API_KEY)
+
+    # ===== 형법 RAG =====
     rag = CriminalLawRAG(client)
 
     if RAG_INDEX_PATH.exists():
+        print("📂 기존 RAG 인덱스 로드")
         rag.load_index(str(RAG_INDEX_PATH))
     else:
+        print("⚠️ RAG 캐시 없음 → 최초 1회만 생성")
         rag.build_index(str(CRIMINAL_LAW_PATH))
         rag.save_index(str(RAG_INDEX_PATH))
 
-    # 2) 판례 임베딩
+    # ===== 판례 임베딩 =====
     precedent_index = PrecedentIndex()
-    precedent_index.init_index()
 
-    # 전역 저장
-    app.state.client = client
+    if PRECEDENT_EMBEDDING_CACHE.exists():
+        print("📂 기존 판례 임베딩 로드")
+        precedent_index.load_cache()
+    else:
+        print("⚠️ 판례 임베딩 없음 → 최초 1회만 생성")
+        precedent_index.load_precedent_csv()
+        precedent_index.build_embeddings()
+        precedent_index.save_cache()
+
     app.state.criminal_law_rag = rag
     app.state.precedent_index = precedent_index
 
-    print("초기화 완료-서버 준비됨")
-
     yield
     print("🛑 서버 종료")
+
 
 app = FastAPI(title="My API")
 
