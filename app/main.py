@@ -2,43 +2,29 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from openai import OpenAI
 
-from app.routers import cases, legal_criteria, criteria_evaluation
+from app.routers import (
+    cases, legal_criteria, criteria_evaluation, 
+    analysis, analysis_doc, analysis_img,
+    chat, final_analysis
+    )
+from app.routers.stt_video import router as stt_video_router   # ⭐ 추가
+
 from app.core.criminal_law_rag import CriminalLawRAG
 from app.core.precedent_embedding import PrecedentIndex
 from app.config import (
     CRIMINAL_LAW_PATH,
     RAG_INDEX_PATH,
     PRECEDENT_CSV_PATH,
+    PRECEDENT_EMBEDDING_CACHE,
     OPENAI_API_KEY
 )
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     print("🚀 서버 시작 → 초기 데이터 로드")
+from app.routers import reports
 
-#     # 1) 형법 RAG
-#     client = OpenAI(api_key=OPENAI_API_KEY)
-#     rag = CriminalLawRAG(client)
+app = FastAPI()
 
-#     if RAG_INDEX_PATH.exists():
-#         rag.load_index(str(RAG_INDEX_PATH))
-#     else:
-#         rag.build_index(str(CRIMINAL_LAW_PATH))
-#         rag.save_index(str(RAG_INDEX_PATH))
 
-#     # 2) 판례 임베딩
-#     precedent_index = PrecedentIndex()
-#     precedent_index.init_index()
 
-#     # 전역 저장
-#     app.state.client = client
-#     app.state.criminal_law_rag = rag
-#     app.state.precedent_index = precedent_index
-
-#     print("초기화 완료-서버 준비됨")
-
-#     yield
-#     print("🛑 서버 종료")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -75,8 +61,13 @@ async def lifespan(app: FastAPI):
     yield
     print("🛑 서버 종료")
 
-
-app = FastAPI(title="My API")
+# ==============================
+# ✅ 핵심: lifespan 연결
+# ==============================
+app = FastAPI(
+    title="AI Investigation Analysis Server",
+    lifespan=lifespan
+)
 
 @app.get("/health")
 def health():
@@ -85,4 +76,11 @@ def health():
 # ---------라우터 연결-----------
 app.include_router(cases.router)
 app.include_router(legal_criteria.router)
-app.include_router(criteria_evaluation.router)  
+app.include_router(criteria_evaluation.router)
+app.include_router(analysis.router)      # /analysis/upload
+app.include_router(stt_video_router)     # ⭐ /analysis/stt-video 추가
+app.include_router(analysis_doc.router)
+app.include_router(analysis_img.router)
+app.include_router(chat.router)
+app.include_router(final_analysis.router)
+app.include_router(reports.router)
