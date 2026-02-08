@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # app/routers/reports.py
 
 from fastapi import APIRouter, HTTPException
@@ -72,3 +73,27 @@ async def delete_report(report_id: str):
         raise HTTPException(status_code=404, detail="보고서를 찾을 수 없습니다")
     
     return {"message": "보고서가 삭제되었습니다", "report_id": report_id}
+=======
+from fastapi import APIRouter
+from app.models.report_schema import ReportDraftRequest, ReportDraftResponse
+from app.services.report_service import (
+    make_interim_report,
+    make_final_report,
+    make_decision_report
+)
+
+router = APIRouter(prefix="/reports", tags=["reports"])
+
+@router.post("/interim-draft", response_model=ReportDraftResponse)
+def interim_draft(req: ReportDraftRequest):
+    return make_interim_report(req)
+
+@router.post("/final-draft", response_model=ReportDraftResponse)
+def final_draft(req: ReportDraftRequest):
+    return make_final_report(req)
+
+@router.post("/decision-draft", response_model=ReportDraftResponse)
+def decision_draft(req: ReportDraftRequest):
+    return make_decision_report(req)
+
+>>>>>>> 88bdb9c (commit)
