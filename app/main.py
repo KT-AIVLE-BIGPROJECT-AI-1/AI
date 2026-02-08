@@ -13,7 +13,8 @@ from app.core.embeddings import initialize_embeddings
 
 #-----------------------------------------------------#
 from openai import OpenAI
-from app.routers import cases, legal_criteria
+from app.routers import cases, legal_criteria, criteria_evaluation
+
 from app.core.criminal_law_rag import CriminalLawRAG
 from app.core.precedent_embedding import PrecedentIndex
 from app.config import (
@@ -226,3 +227,5 @@ if __name__ == "__main__":
 # # ---------라우터 연결-----------
 # app.include_router(cases.router)
 # app.include_router(legal_criteria.router)
+# app.include_router(criteria_evaluation.router)  
+
