@@ -3,7 +3,7 @@
 # 수정 필요
 # =========================
 
-<<<<<<< HEAD
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -17,7 +17,7 @@ from openai import OpenAI
 
 from app.routers import (
     cases, legal_criteria, criteria_evaluation, 
-    analysis, analysis_doc, analysis_img,
+    analysis, stt_video, analysis_doc, analysis_img,
     chat, final_analysis
     )
 from app.routers.stt_video import router as stt_video_router   # ⭐ 추가

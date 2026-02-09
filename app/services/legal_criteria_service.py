@@ -195,6 +195,64 @@
 # # 사건 유형:
 # # {case_json["type"]}
 
+# app/services/legal_criteria_service.py
+
+import re
+from typing import Optional
+
+
+def extract_criminal_law_article(text: str) -> Optional[str]:
+    """
+    criterion_text에서 '형법 제OO조' 추출
+    예) '형법 제116조의3' 반환
+    """
+    match = re.search(r"(형법\s*제\d+조(?:의\d+)?)", text)
+    return match.group(1) if match else None
+
+
+def get_law_snippet_from_rag(article: str, rag) -> str:
+    """
+    criminal_law_rag_index.pkl 기반 검색
+    - 상위 3개 문서 중 첫 번째 사용
+    - 너무 길면 요약(축약)
+    """
+
+    results = rag.search(article, top_k=3)
+
+    if not results:
+        return f"※ 관련 법조문({article})을 RAG에서 찾지 못했습니다."
+
+    law_text = results[0].page_content
+
+    # 너무 길면 잘라서 요약 느낌으로 정리
+    if len(law_text) > 800:
+        law_text = law_text[:800] + "\n...(이하 생략)"
+
+    return f"""
+※ 관련 법조문({article})
+
+{law_text}
+"""
+
+
+def enrich_criterion_text_with_law(criterion_text: str, rag) -> str:
+    """
+    핵심 함수:
+    기존 criterion_text 뒤에 형법 내용을 덧붙여 확장
+    """
+
+    article = extract_criminal_law_article(criterion_text)
+
+    if not article:
+        # 형법 언급 없으면 그대로 반환
+        return criterion_text
+
+    law_snippet = get_law_snippet_from_rag(article, rag)
+
+    # 최종 합치기
+    return f"{criterion_text}\n\n{law_snippet}"
+
+
 
 # 검색된 형법 조문:
 # {articles_text}
