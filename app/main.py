@@ -193,7 +193,6 @@ app = FastAPI(
 )
 
 
-<<<<<<< HEAD
 @app.get("/health")
 async def health_check():
     """

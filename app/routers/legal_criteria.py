@@ -3,24 +3,16 @@
 # 수정 필요
 # =========================
 
-<<<<<<< HEAD
+
 # from openai import OpenAI
 # from app.config import OPENAI_API_KEY, CRIMINAL_LAW_PATH, RAG_INDEX_PATH
 from fastapi import APIRouter, HTTPException
 from app.models.legal_criteria_schema import LegalCriteriaRequest, LegalCriteriaResponse
 from app.services.legal_criteria_service import LegalCriteriaService
-# from app.services.legal_criteria_service import analyze_legal_criteria_pipeline
+# from app.services.legal_criteria_service import analyze_legal_criteria_pipeline, enrich_criterion_text_with_law
 # from app.core.criminal_law_rag import CriminalLawRAG
 # from app.core.precedent_embedding import PrecedentIndex
-=======
-from app.config import OPENAI_API_KEY, CRIMINAL_LAW_PATH, RAG_INDEX_PATH
-from app.models.legal_criteria_schema import (
-    LegalCriteriaRequest, LegalCriteriaResponse
-)
-from app.services.legal_criteria_service import analyze_legal_criteria_pipeline, enrich_criterion_text_with_law
-from app.core.criminal_law_rag import CriminalLawRAG
-from app.core.precedent_embedding import PrecedentIndex
->>>>>>> 1b61716 (commit)
+
 
 router = APIRouter(prefix="/legal-criteria", tags=["Legal Criteria"])
 
