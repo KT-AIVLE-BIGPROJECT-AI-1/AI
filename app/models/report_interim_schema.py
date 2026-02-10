@@ -5,14 +5,11 @@ from typing import List, Optional, Any, Dict
 
 
 class CaseSummary(BaseModel):
-    action: Optional[str] = Field(None, alias="행위")
-    object: Optional[str] = Field(None, alias="객체")
-    place: Optional[str] = Field(None, alias="장소")
-    time: Optional[str] = Field(None, alias="시간")
-    result: Optional[str] = Field(None, alias="결과")
-    
-    class Config:
-        populate_by_name = True
+    action: Optional[str] = Field(None)
+    object: Optional[str] = Field(None)
+    place: Optional[str] = Field(None)
+    time: Optional[str] = Field(None)
+    result: Optional[str] = Field(None)
 
 
 class CaseDetail(BaseModel):
@@ -21,7 +18,7 @@ class CaseDetail(BaseModel):
     title: str
     description: str
     summary: CaseSummary
-    type: str
+    type: str = Field(..., description="ASSAULT|THEFT|FRAUD|MURDER|TRAFFIC|OTHER")
     status: str
     occurred_at: str
     location: str
@@ -43,10 +40,17 @@ class ReportInterimRequest(BaseModel):
 
 
 class ReportInterimResponse(BaseModel):
-    report_id: str
-    case_id: str
-    report_type: str = "INTERIM"
-    title: str
-    content: Dict[str, Any]
-    pdf_path: str  # ✅ 추가
-    created_at: str
+    title: str = Field(..., description="문서 최상단에 들어갈 제목")
+    content: Dict[str, Any] = Field(
+        ...,
+        description="""
+        수사보고 양식 content keys:
+        - case_overview: 사건 개요 (string)
+        - investigation_progress: 수사 경과 (string)
+        - current_status: 현재 상황 (object)
+            - collected_evidence: 확보 증거
+            - legal_review: 법리 검토
+            - progress_rate: 진행률
+        - future_plan: 향후 계획 (string)
+        """
+    )

@@ -37,9 +37,6 @@ from app.routers import (
     legal_criteria_router,
     criteria_evaluation_router,
     investigation_files_router,
-    analysis_document_router,
-    analysis_image_router,
-    analysis_media_router,
     analysis_callback_router,
     analysis_final_router,
     report_interim_router,
@@ -74,9 +71,6 @@ app.include_router(cases_router)
 app.include_router(legal_criteria_router)
 app.include_router(criteria_evaluation_router)
 app.include_router(investigation_files_router)
-app.include_router(analysis_document_router)
-app.include_router(analysis_image_router)
-app.include_router(analysis_media_router)
 app.include_router(analysis_callback_router)
 app.include_router(analysis_final_router)
 app.include_router(report_interim_router)
@@ -100,18 +94,15 @@ async def root():
         "endpoints": {
             "1. CASE": "POST /cases/summary",
             "2. LEGAL_CRITERIA": "POST /legal-criteria",
-            "3. CRITERIA_EVALUATION": "POST /legal-criteria/evaluate",
-            "4. ANALYSIS_DOC": "POST /analysis/doc",
-            "5. ANALYSIS_IMG": "POST /analysis/img",
-            "6. ANALYSIS_VDO": "POST /analysis/vdo",
-            "7. ANALYSIS_STT": "POST /analysis/stt",
-            "8. INVESTIGATE_FILE": "POST /analysis/upload",
-            "9. CHAT_LOG": "POST /chat/respond",
-            "10-15. CALLBACKS": "POST /cases/{case_id}/analysis/{analysis_id}/callback",
-            "16. FINAL_ANALYSIS": "POST /analysis/final",
-            "17. REPORTS": "POST /reports/interim-draft",
-            "18. REPORT_A": "POST /reports/final-draft",
-            "19. REPORT_B": "POST /reports/decision-draft"
+            "3. CRITERIA_EVALUATION": "POST /criteria-evaluation",
+            "4. INVESTIGATE_FILE": "POST /analysis/upload",
+            "5. CALLBACKS": "POST /cases/{case_id}/analysis/{analysis_id}/callback",
+            "6. FINAL_ANALYSIS": "POST /analysis/final",
+            "7. CHAT_LOG": "POST /chat/respond",
+            "8. REPORT_INTERIM": "POST /reports/interim",
+            "9. REPORT_FINAL": "POST /reports/final",
+            "10. REPORT_DECISION": "POST /reports/decision",
+            "11. REPORTS": "GET /reports"
         }
     })
 

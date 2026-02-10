@@ -1,7 +1,7 @@
 # app/models/analysis_final_schema.py
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Union
 
 
 # ============================================================
@@ -9,19 +9,19 @@ from typing import List, Optional, Any
 # ============================================================
 
 class CaseSummary(BaseModel):
-    action: str
-    object: str
-    interaction: str
-    place: str
-    time: str
-    result: str
+    action: Optional[str] = None
+    object: Optional[str] = None
+    interaction: Optional[str] = None
+    place: Optional[str] = None
+    time: Optional[str] = None
+    result: Optional[str] = None
 
 
 class CaseDetail(BaseModel):
     title: str
     description: str
     summary: CaseSummary
-    type: str
+    type: str = Field(..., description="ASSAULT|THEFT|FRAUD|MURDER|TRAFFIC|OTHER")
     status: str
     occurred_at: str
     location: str
@@ -34,9 +34,9 @@ class LegalIssueInfo(BaseModel):
 
 class CriteriaEvaluationInfo(BaseModel):
     analysis_id: Optional[str] = None
-    status: str
-    reason: str
-    evidence_gap: str
+    status: str = Field(..., description="MET|NOT_MET|INSUFFICIENT")
+    reason: str = ""
+    evidence_gap: str = ""
 
 
 class LegalCriterionWithEvaluation(BaseModel):
@@ -44,18 +44,27 @@ class LegalCriterionWithEvaluation(BaseModel):
     precedent_case_no: Optional[str] = None
     precedent_decision_date: Optional[str] = None
     legal_issue: LegalIssueInfo
-    criteria_evaluation: CriteriaEvaluationInfo
+    criteria_evaluation: Optional[CriteriaEvaluationInfo] = None
 
 
 class AnalysisInfo(BaseModel):
     analysis_id: str
-    analysis_type: str = Field(..., description="DOC|STT|VDO|IMG")
-    status: str
-    result_data: Any
+    file_type: str = Field(..., description="DOCUMENT|IMAGE|VIDEO|AUDIO")
+    status: str = Field(..., description="COMPLETED|PENDING|FAILED")
+    result_data: Any = Field(
+        default=None,
+        description="""
+        파일 유형별 result_data 구조:
+        - DOCUMENT: string (분석 요약 텍스트)
+        - IMAGE: string (이미지 분석 텍스트)
+        - VIDEO: List[{"stage": "VIDEO_EVENT", "payload": [...]}]
+        - AUDIO: string (JSON 문자열) 또는 List[{"stage": "TRANSCRIPT|KEY_STATEMENT|CONTRADICTION|QUESTION", "payload": ...}]
+        """
+    )
 
 
 class UsedContext(BaseModel):
-    analysis_ids: List[str] = Field(default_factory=list)
+    analysis_ids: Optional[List[str]] = Field(default_factory=list)
     type: Optional[str] = None
 
 
@@ -73,8 +82,8 @@ class ChatLog(BaseModel):
 class AnalysisFinalRequest(BaseModel):
     case_detail: CaseDetail
     legal_criteria: List[LegalCriterionWithEvaluation]
-    analysys: List[AnalysisInfo]  # 오타 그대로 유지 (요청 명세에 맞춤)
-    chat_logs: List[ChatLog] = Field(default_factory=list)
+    analyses: List[AnalysisInfo]
+    chat_logs: Optional[List[ChatLog]] = Field(default_factory=list)
 
 
 # ============================================================

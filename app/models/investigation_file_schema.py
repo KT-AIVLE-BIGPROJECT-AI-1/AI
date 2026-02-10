@@ -36,7 +36,7 @@ class CaseDetail(BaseModel):
     title: str
     description: str
     summary: CaseSummary
-    type: str = Field(..., description="ASSAULT|THEFT|FRAUD|TRAFFIC|OTHER")
+    type: str = Field(..., description="ASSAULT|THEFT|FRAUD|MURDER|TRAFFIC|OTHER")
     status: str = Field(..., description="OPEN|ONGOING|DONE")
     occurred_at: str
     location: str
@@ -55,7 +55,7 @@ class LegalCriterionInfo(BaseModel):
 
 
 class InvestigationFileInfo(BaseModel):
-    job_id: str
+    analysis_id: str
     file_type: str = Field(..., description="VIDEO|AUDIO|IMAGE|DOCUMENT")
     origin_name: str
     presigned_url: str
@@ -70,8 +70,7 @@ class InvestigationFilesRequest(BaseModel):
 
 class AnalysisTarget(BaseModel):
     origin_name: str
-    file_type: str
-    analysis_type: str = Field(..., description="DOC|STT|VDO|IMG")
+    file_type: str = Field(..., description="VIDEO|AUDIO|IMAGE|DOCUMENT")
 
 
 class InvestigationFilesResponse(BaseModel):

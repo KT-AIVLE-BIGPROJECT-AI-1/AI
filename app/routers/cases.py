@@ -1,18 +1,18 @@
 # app/routers/cases.py
 
 from fastapi import APIRouter, HTTPException
-from app.models.case_schema import CaseRequest, CaseResponse
+from app.models.case_schema import CaseRequest, CaseSummaryResponse
 from app.services.case_service import CaseService
 
 router = APIRouter(prefix="/cases", tags=["Cases"])
 
 
-@router.post("/summary", response_model=CaseResponse)
+@router.post("/summary", response_model=CaseSummaryResponse)
 async def create_case_summary(request: CaseRequest):
     """
-    CASE 생성 및 Summary 추출
+    CASE Summary 생성
     
-    - 사건 정보를 받아 6가지 요소로 구조화
+    - 사건 정보를 받아 6가지 요소로 구조화된 summary 반환
     - action, object, interaction, place, time, result
     """
     try:

@@ -56,7 +56,7 @@ class LegalCriterionBasic(BaseModel):
 
 
 class AnalysisInfo(BaseModel):
-    analysis_type: str = Field(..., description="DOC|IMG|VDO|STT")
+    analysis_type: str = Field(..., description="DOCUMENT|IMAGE|VIDEO|AUDIO")
     status: str
     result_data: Any
 

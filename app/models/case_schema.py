@@ -17,9 +17,13 @@ class CaseSummary(BaseModel):
 class CaseRequest(BaseModel):
     title: str = Field(..., description="사건 제목")
     description: str = Field(..., description="사건 설명")
-    type: str = Field(default="THEFT", description="사건 유형 (THEFT, ASSAULT, FRAUD 등)")
+    type: str = Field(default="THEFT", description="사건 유형 (THEFT, ASSAULT, FRAUD, MURDER, TRAFFIC, OTHER)")
     occurred_at: str = Field(..., description="발생 일시 (ISO 8601)")
     location: str = Field(..., description="발생 장소")
+
+
+class CaseSummaryResponse(BaseModel):
+    summary: CaseSummary
 
 
 class CaseResponse(BaseModel):

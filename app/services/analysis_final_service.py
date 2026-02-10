@@ -15,7 +15,7 @@ client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 # ============================================================
-# generate_final_analysis (AI.ipynb와 100% 동일)
+# generate_final_analysis
 # ============================================================
 
 def generate_final_analysis(
@@ -27,7 +27,6 @@ def generate_final_analysis(
 ) -> Dict:
     """
     모든 분석 결과를 종합하여 최종 송치 의견 생성
-    API 명세서 준수 버전
     """
     
     print("\n" + "="*70)
@@ -40,9 +39,9 @@ def generate_final_analysis(
     
     print("\n[1단계] 통계 수집 중...")
     
-    # 증거 분석 통계
+    # 전체 증거 통계
     total_evidence = len(analysis_list)
-    evidence_by_type = Counter(a.get('analysis_type', 'UNKNOWN') for a in analysis_list)
+    evidence_by_type = Counter(a.get('file_type', 'UNKNOWN') for a in analysis_list)
     
     # 법리 기준 평가 통계
     all_evaluations = []
@@ -64,12 +63,103 @@ def generate_final_analysis(
         if issue_name and issue_name not in legal_issues:
             legal_issues[issue_name] = legal_issue.get('related_law', '')
     
-    print(f"   ✅ 증거: {total_evidence}건")
-    print(f"   ✅ 법리 기준: {total_criteria}건")
+    print(f"   ✅ 증거: {total_evidence}건 ({dict(evidence_by_type)})")
+    print(f"   ✅ 법리 기준: {total_criteria}건 (MET:{satisfied_count} / NOT_MET:{not_satisfied_count} / INSUFFICIENT:{insufficient_count})")
     print(f"   ✅ 법리 쟁점: {len(legal_issues)}개")
     
     # ============================================================
-    # 2. GPT에게 최종 판단 요청
+    # 2. 증거별 요약 텍스트 생성
+    # ============================================================
+    
+    evidence_details = []
+    for a in analysis_list:
+        file_type = a.get('file_type', 'UNKNOWN')
+        analysis_id = a.get('analysis_id', '')
+        result_data = a.get('result_data', '')
+        
+        if file_type in ('DOCUMENT', 'IMAGE'):
+            # 문서/이미지: 텍스트 요약
+            summary_text = str(result_data)[:300] if result_data else "(분석 결과 없음)"
+            evidence_details.append(f"[{file_type}] {analysis_id}: {summary_text}")
+        
+        elif file_type == 'VIDEO':
+            # 영상: VIDEO_EVENT 요약
+            if isinstance(result_data, list):
+                events = []
+                for item in result_data:
+                    if isinstance(item, dict):
+                        payload = item.get('payload', [])
+                        if isinstance(payload, list):
+                            for evt in payload:
+                                evt_type = evt.get('event_type', '')
+                                evt_desc = evt.get('event_description', '')
+                                start = evt.get('start_time', '')
+                                end = evt.get('end_time', '')
+                                events.append(f"{evt_type}: {evt_desc} ({start}s~{end}s)")
+                evidence_details.append(f"[VIDEO] {analysis_id}: {', '.join(events) if events else '(이벤트 없음)'}")
+            else:
+                evidence_details.append(f"[VIDEO] {analysis_id}: {str(result_data)[:200]}")
+        
+        elif file_type == 'AUDIO':
+            # 음성: stage별 요약
+            if isinstance(result_data, list):
+                audio_parts = []
+                for item in result_data:
+                    if isinstance(item, dict):
+                        stage = item.get('stage', '')
+                        payload = item.get('payload', {})
+                        if stage == 'TRANSCRIPT':
+                            content = payload.get('content', '') if isinstance(payload, dict) else ''
+                            audio_parts.append(f"전사: {content[:100]}")
+                        elif stage == 'KEY_STATEMENT':
+                            if isinstance(payload, list):
+                                stmts = [s.get('content', '') for s in payload]
+                                audio_parts.append(f"핵심진술: {', '.join(stmts)}")
+                        elif stage == 'CONTRADICTION':
+                            if isinstance(payload, list):
+                                contras = [c.get('description', '') for c in payload]
+                                audio_parts.append(f"모순: {', '.join(contras)}")
+                        elif stage == 'QUESTION':
+                            if isinstance(payload, list):
+                                qs = [q.get('question', '') for q in payload]
+                                audio_parts.append(f"추가질문: {', '.join(qs)}")
+                evidence_details.append(f"[AUDIO] {analysis_id}: {'; '.join(audio_parts) if audio_parts else '(내용 없음)'}")
+            elif isinstance(result_data, str):
+                # result_data가 JSON 문자열인 경우
+                try:
+                    parsed = json.loads(result_data)
+                    if isinstance(parsed, list):
+                        audio_parts = []
+                        for item in parsed:
+                            stage = item.get('stage', '')
+                            payload = item.get('payload', {})
+                            if stage == 'TRANSCRIPT':
+                                content = payload.get('content', '') if isinstance(payload, dict) else ''
+                                audio_parts.append(f"전사: {content[:100]}")
+                            elif stage == 'KEY_STATEMENT':
+                                if isinstance(payload, list):
+                                    stmts = [s.get('content', '') for s in payload]
+                                    audio_parts.append(f"핵심진술: {', '.join(stmts)}")
+                            elif stage == 'CONTRADICTION':
+                                if isinstance(payload, list):
+                                    contras = [c.get('description', '') for c in payload]
+                                    audio_parts.append(f"모순: {', '.join(contras)}")
+                            elif stage == 'QUESTION':
+                                if isinstance(payload, list):
+                                    qs = [q.get('question', '') for q in payload]
+                                    audio_parts.append(f"추가질문: {', '.join(qs)}")
+                        evidence_details.append(f"[AUDIO] {analysis_id}: {'; '.join(audio_parts) if audio_parts else '(내용 없음)'}")
+                    else:
+                        evidence_details.append(f"[AUDIO] {analysis_id}: {str(result_data)[:200]}")
+                except (json.JSONDecodeError, AttributeError):
+                    evidence_details.append(f"[AUDIO] {analysis_id}: {str(result_data)[:200]}")
+            else:
+                evidence_details.append(f"[AUDIO] {analysis_id}: {str(result_data)[:200]}")
+    
+    evidence_details_text = "\n".join(evidence_details[:15])  # 최대 15건
+    
+    # ============================================================
+    # 3. GPT에게 최종 판단 요청
     # ============================================================
     
     print("\n[2단계] GPT 최종 판단 생성 중...")
@@ -89,6 +179,9 @@ def generate_final_analysis(
 [증거 현황]
 - 총 증거: {total_evidence}건
 - 증거 유형: {dict(evidence_by_type)}
+
+[증거 상세]
+{evidence_details_text}
 """
     
     # 법리 평가 요약
@@ -172,10 +265,10 @@ def generate_final_analysis(
    - 증거 유형: Y가지
    
    [카테고리별 증거]
-   - DOC: X건
-   - IMG: X건
-   - VDO: X건
-   - STT: X건
+   - DOCUMENT: X건
+   - IMAGE: X건
+   - VIDEO: X건
+   - AUDIO: X건
    
    [평가]
    증거의 충분성이 [송치/불송치/보류] 결정을 뒷받침합니다.
@@ -248,9 +341,9 @@ class AnalysisFinalService:
             lc.model_dump() for lc in request.legal_criteria
         ]
         
-        # analysys를 dict 리스트로 변환
+        # analyses를 dict 리스트로 변환 (전체 파일 타입 포함)
         analysis_list = [
-            a.model_dump() for a in request.analysys
+            a.model_dump() for a in request.analyses
         ]
         
         # chat_logs를 dict 리스트로 변환

@@ -5,6 +5,7 @@ from app.models.investigation_file_schema import (
     InvestigationFilesResponse,
     AnalysisTarget
 )
+from app.services.analysis_callback_service import AnalysisCallbackService
 
 
 class InvestigationFileService:
@@ -24,25 +25,33 @@ class InvestigationFileService:
         
         targets = []
         
-        # 파일 타입 → 분석 타입 매핑
-        file_type_mapping = {
-            "VIDEO": "VDO",
-            "AUDIO": "STT",
-            "IMAGE": "IMG",
-            "DOCUMENT": "DOC"
-        }
+        # 콜백 서비스에 등록할 파일 목록
+        callback_files = []
         
         for file_info in request.investigation_files:
-            analysis_type = file_type_mapping.get(file_info.file_type.upper(), "DOC")
-            
             target = AnalysisTarget(
                 origin_name=file_info.origin_name,
-                file_type=file_info.file_type,
-                analysis_type=analysis_type
+                file_type=file_info.file_type
             )
             
             targets.append(target)
-            print(f"  [{file_info.job_id}] {file_info.origin_name} ({file_info.file_type} → {analysis_type})")
+            
+            # 콜백 서비스 등록용 데이터
+            callback_files.append({
+                "analysis_id": file_info.analysis_id,
+                "file_type": file_info.file_type,
+                "origin_name": file_info.origin_name
+            })
+            
+            print(f"  [{file_info.analysis_id}] {file_info.origin_name} ({file_info.file_type})")
+        
+        # 콜백 서비스에 파일 등록
+        case_detail_dict = request.case_detail.model_dump()
+        AnalysisCallbackService.register_investigation_files(
+            case_id=request.case_detail.case_id,
+            case_detail=case_detail_dict,
+            files=callback_files
+        )
         
         print("=" * 70)
         print(f"✅ {len(targets)}개 파일 분석 대기 (PENDING)")

@@ -204,6 +204,7 @@ class DocumentAnalyzerV3:
 
 def analyze_document_to_fixed_json(
     analyzer: DocumentAnalyzerV3,
+    analysis_id: str,
     file_id: str,
     file_path: Path,
     case_json: dict = None,
@@ -213,7 +214,6 @@ def analyze_document_to_fixed_json(
     문서를 분석하여 ANALYSIS_DOC JSON 생성
     """
 
-    analysis_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
 
     status = "PROCESSING"
@@ -265,6 +265,7 @@ class AnalysisDocumentService:
         # 분석 실행
         result = analyze_document_to_fixed_json(
             analyzer=document_analyzer,
+            analysis_id=request.analysis_id,
             file_id=request.file_id,
             file_path=file_path,
             case_json=case_json,
@@ -272,5 +273,12 @@ class AnalysisDocumentService:
         )
         
         print(f"✅ 문서 분석 완료: {result['status']}")
+        
+        # 콜백 서비스에 분석 결과 등록 (SUMMARY용)
+        from app.services.analysis_callback_service import AnalysisCallbackService
+        AnalysisCallbackService.register_analysis_result(
+            analysis_id=result["analysis_id"],
+            result_data=result
+        )
         
         return AnalysisDocumentResponse(**result)

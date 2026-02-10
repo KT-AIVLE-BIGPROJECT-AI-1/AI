@@ -16,7 +16,7 @@ class CaseSummary(BaseModel):
 class LegalCriteriaRequest(BaseModel):
     description: str
     summary: CaseSummary
-    type: str = Field(..., description="ASSAULT|THEFT|FRAUD|TRAFFIC|OTHER")
+    type: str = Field(..., description="ASSAULT|THEFT|FRAUD|MURDER|TRAFFIC|OTHER")
     occurred_at: str
     location: str
 

@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from openai import OpenAI
 from app.config import settings
-from app.models.case_schema import CaseRequest, CaseResponse, CaseSummary
+from app.models.case_schema import CaseRequest, CaseResponse, CaseSummary, CaseSummaryResponse
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -77,41 +77,22 @@ class CaseService:
             }
 
     @staticmethod
-    def create_case(request: CaseRequest) -> CaseResponse:
+    def create_case(request: CaseRequest) -> CaseSummaryResponse:
         """
-        CASE 생성 (Summary 포함)
-        AI.ipynb의 CASE 생성 로직 이식
+        CASE Summary 생성
+        사건 내용을 받아 6가지 요소로 구조화된 summary 반환
         """
         # Summary 생성
         summary_dict = CaseService.generate_case_summary(request.description)
-        
-        # CASE 객체 생성
-        case_id = str(uuid.uuid4())
-        now = utc_now_iso()
-        
-        case_response = CaseResponse(
-            case_id=case_id,
-            title=request.title,
-            description=request.description,
-            type=request.type,
-            occurred_at=request.occurred_at,
-            location=request.location,
-            summary=CaseSummary(**summary_dict),
-            status="OPEN",
-            created_at=now,
-            updated_at=now
-        )
         
         print("\n" + "=" * 70)
         print("📋 CASE Summary 생성 (API 명세서 준수)")
         print("=" * 70)
         print(f"\n[API 응답]\n{json.dumps(summary_dict, ensure_ascii=False, indent=2)}")
-        
-        # ✅ 수정: model_dump()로 dict 변환 후 json.dumps() 사용
-        print(f"\n[내부 CASE 객체]\n{json.dumps(case_response.model_dump(), ensure_ascii=False, indent=2)}")
-        
         print("\n" + "=" * 70)
-        print("✅ CASE 생성 완료")
+        print("✅ CASE Summary 생성 완료")
         print("=" * 70)
         
-        return case_response
+        return CaseSummaryResponse(
+            summary=CaseSummary(**summary_dict)
+        )

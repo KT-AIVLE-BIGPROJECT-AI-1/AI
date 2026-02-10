@@ -24,15 +24,11 @@ class CriteriaEvaluationService:
     def evaluate_criteria(request: CriteriaEvaluationRequest) -> CriteriaEvaluationResponse:
         """
         법리 판단 기준 충족 평가
-        
-        case_detail이 있으면 → 증거 없이 평가 (항상 INSUFFICIENT)
-        analysis가 있으면 → 증거 분석 결과 기반 평가 (MET/NOT_MET/INSUFFICIENT)
         """
         print("\n" + "=" * 70)
         print("⚖️ 법리 판단 기준 충족 평가")
         print("=" * 70)
         
-        # 첫 번째 기준만 평가 (실제로는 모든 기준을 평가할 수 있음)
         criterion = request.legal_criteria[0]
         criterion_dict = criterion if isinstance(criterion, dict) else criterion.model_dump()
         
@@ -42,9 +38,6 @@ class CriteriaEvaluationService:
         print(f"📋 평가 대상 기준: {criterion_text}")
         print(f"📋 법리 쟁점: {legal_issue.get('issue_name', '')}")
         
-        # ============================================================
-        # 모드 1: case_detail만 있음 (증거 없이 평가)
-        # ============================================================
         if request.case_detail:
             print(f"🔍 모드: case_detail (증거 없이 초기 평가)")
             print(f"   - case_id: {request.case_detail.case_id}")
@@ -56,15 +49,11 @@ class CriteriaEvaluationService:
                 legal_issue=legal_issue
             )
         
-        # ============================================================
-        # 모드 2: analysis만 있음 (증거 기반 재평가)
-        # ============================================================
         elif request.analysis:
             print(f"🔍 모드: analysis (증거 기반 재평가)")
             print(f"   - analysis_type: {request.analysis.analysis_type}")
             print(f"   - status: {request.analysis.status}")
             
-            # criteria_evaluation 정보 출력 (있으면)
             previous_eval = criterion_dict.get('criteria_evaluation')
             if previous_eval:
                 print(f"   - 이전 평가: {previous_eval.get('status', 'UNKNOWN')}")
@@ -76,7 +65,6 @@ class CriteriaEvaluationService:
             )
         
         else:
-            # 스키마 검증에서 이미 걸러지지만 안전장치
             raise ValueError("case_detail 또는 analysis 중 하나는 필수입니다")
         
         print("=" * 70)
@@ -85,24 +73,16 @@ class CriteriaEvaluationService:
         
         return response
     
-    # ============================================================
-    # 모드 1: 증거 없이 평가 (case_detail)
-    # ============================================================
-    
     @staticmethod
     def _evaluate_without_analysis(
         case_detail,
         criterion_text: str,
         legal_issue: dict
     ) -> CriteriaEvaluationResponse:
-        """
-        증거 없이 평가 (항상 INSUFFICIENT 반환)
-        """
-        # 기준에서 핵심 키워드 추출
+        """증거 없이 평가 (항상 INSUFFICIENT 반환)"""
         keywords = criterion_text.split("(")[0].strip()
         
         reason = f"{keywords}을(를) 판단하기 위한 증거가 전혀 없습니다. 증거가 없으므로 해당 행위의 존재 여부를 확인할 수 없습니다."
-        
         evidence_gap = f"{keywords}에 대한 구체적인 증거 자료(목격자 진술, 피해자 진술, CCTV 영상, 물리적 증거 등)가 필요합니다."
         
         return CriteriaEvaluationResponse(
@@ -111,21 +91,13 @@ class CriteriaEvaluationService:
             evidence_gap=evidence_gap
         )
     
-    # ============================================================
-    # 모드 2: 증거 기반 재평가 (analysis)
-    # ============================================================
-    
     @staticmethod
     def _evaluate_with_analysis(
         analysis,
         criterion_text: str,
         legal_issue: dict
     ) -> CriteriaEvaluationResponse:
-        """
-        증거 분석 결과 기반 평가
-        GPT-4o를 사용하여 증거와 법리 기준을 종합 평가
-        """
-        # result_data를 문자열로 변환
+        """증거 분석 결과 기반 평가"""
         result_data = analysis.result_data
         if isinstance(result_data, dict):
             result_data_str = json.dumps(result_data, ensure_ascii=False, indent=2)
@@ -171,7 +143,6 @@ class CriteriaEvaluationService:
             
             result_text = response.choices[0].message.content.strip()
             
-            # JSON 파싱
             import re
             result_text = re.sub(r"```json|```", "", result_text).strip()
             result = json.loads(result_text)
