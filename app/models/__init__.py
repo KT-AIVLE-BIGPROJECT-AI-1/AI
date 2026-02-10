@@ -1,6 +1,6 @@
 # app/models/__init__.py
 
-from .case_schema import CaseRequest, CaseResponse, CaseSummary, CaseSummaryResponse
+from .case_schema import CaseRequest, CaseResponse, CaseSummary
 from .legal_criteria_schema import (
     LegalCriteriaRequest, 
     LegalCriteriaResponse,
@@ -62,7 +62,6 @@ __all__ = [
     "CaseRequest",
     "CaseResponse",
     "CaseSummary",
-    "CaseSummaryResponse",
     "LegalCriteriaRequest",
     "LegalCriteriaResponse",
     "LegalIssue",
