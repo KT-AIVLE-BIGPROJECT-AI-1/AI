@@ -1,6 +1,6 @@
 # app/services/chat_service.py
 
-from typing import List, Dict, Optional
+from typing import List, Dict
 from openai import OpenAI
 from app.config import settings
 from app.models.chat_schema import ChatRequest, ChatResponse, UsedContext
@@ -9,74 +9,73 @@ client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 class ChatService:
-    """채팅 서비스 - 다수 VIDEO_EVENT 교차 분석 대화"""
+    """채팅 서비스 - VIDEO_EVENT 자동 참조"""
 
     _chat_history: List[Dict[str, str]] = []
     MAX_HISTORY = 20
 
     SYSTEM_PROMPT = """당신은 수사 보조 AI 어시스턴트입니다.
-당신에게는 CCTV 영상 분석 결과(VIDEO_EVENT)가 제공되어 있습니다.
-**여러 영상이 있을 수 있으며**, 각 영상은 파일명으로 구분됩니다.
 
-**핵심 규칙:**
-
-1. **사실 기반 답변**: VIDEO_EVENT에 기록된 객관적 사실만을 기반으로 답변하십시오.
-
-2. **추론은 요청 시에만**: 사용자가 명시적으로 추론을 요청하기 전까지는 사실만 전달하십시오.
-   - "추론할 수 있는 내용이 뭐가 있어?", "분석해줘" 등의 질문이 있을 때만 추론을 제공하십시오.
-   - 추론 시 "~로 추정됩니다", "~가능성이 있습니다" 등 추정 표현을 사용하십시오.
-
-3. **시간 질문 대응**: 특정 이벤트의 시간을 묻는 질문에는 start_time, end_time을 정확히 답변하십시오.
-   - 여러 영상에 같은 유형이 있으면 각 영상별로 구분하여 답변하십시오.
-
-4. **이벤트 요약**: "영상에 뭐가 있어?" 등의 질문에는 각 영상별로 시간순 요약하십시오.
-
-5. **다수 영상 교차 분석** (영상 2개 이상인 경우):
-   사용자가 교차 분석, 비교, 관계, 모순 등을 요청하면 다음을 수행하십시오.
-   - **시간대 비교**: 각 영상의 이벤트 시간대가 겹치거나 연속되는지 분석
-   - **행위 연결**: 한 영상의 도주가 다른 영상의 접근과 연결되는지 등
-   - **모순 탐지**: 같은 시간대에 서로 다른 장소에서 동일인이 포착되는 등의 모순
-   - **동선 추정**: 여러 CCTV를 통해 이동 경로 추정
-   - **역할 분석**: 각 영상에서 인물들의 행동 패턴으로 역할 추정 (주도자, 망보기 등)
-   - **수사 단서**: 영상 간 교차 분석으로 도출되는 수사에 도움이 되는 정보
-
-6. **없는 정보**: 확인되지 않는 내용은 "영상 분석 결과에서 확인되지 않습니다"라고 답변하십시오.
+다음은 CCTV 영상 분석 결과(VIDEO_EVENT)입니다.
+영상 분석 결과에 포함된 사실만을 근거로 답변하십시오.
 
 {video_event_context}
 """
 
+    # 🔥 OpenAI role 변환
     @staticmethod
-    def _load_video_events() -> tuple:
-        """AnalysisCallbackService에서 VIDEO_EVENT 데이터 로드 (파일별 구분)"""
+    def _map_role(role: str) -> str:
+        if role == "USER":
+            return "user"
+        if role == "AI":
+            return "assistant"
+        return "user"
+
+    # 🔥 VIDEO_EVENT 강제 수집 로직 (안전 버전)
+    @staticmethod
+    def _load_video_events():
         from app.services.analysis_callback_service import AnalysisCallbackService
 
         analysis_ids = []
-        video_sources = []  # [{analysis_id, origin_name, events}]
+        video_sources = []
+
+        print("📦 현재 _analysis_results 상태:")
+        print(AnalysisCallbackService._analysis_results)
 
         for analysis_id, data in AnalysisCallbackService._analysis_results.items():
-            file_type = data.get("file_type", "")
+
+            file_type = data.get("file_type")
             if file_type != "VIDEO":
                 continue
 
             origin_name = data.get("origin_name", f"영상_{analysis_id[:8]}")
-            rd = data.get("result_data")
+            result_data = data.get("result_data")
 
-            if isinstance(rd, list):
-                for item in rd:
+            if not result_data:
+                continue
+
+            # 🔥 result_data가 list인 경우
+            if isinstance(result_data, list):
+                for item in result_data:
                     if isinstance(item, dict) and item.get("stage") == "VIDEO_EVENT":
-                        analysis_ids.append(analysis_id)
                         video_sources.append({
                             "analysis_id": analysis_id,
                             "origin_name": origin_name,
                             "events": item.get("payload", [])
                         })
-            elif isinstance(rd, dict) and rd.get("stage") == "VIDEO_EVENT":
-                analysis_ids.append(analysis_id)
-                video_sources.append({
-                    "analysis_id": analysis_id,
-                    "origin_name": origin_name,
-                    "events": rd.get("payload", [])
-                })
+                        analysis_ids.append(analysis_id)
+
+            # 🔥 result_data가 dict인 경우
+            elif isinstance(result_data, dict):
+                if result_data.get("stage") == "VIDEO_EVENT":
+                    video_sources.append({
+                        "analysis_id": analysis_id,
+                        "origin_name": origin_name,
+                        "events": result_data.get("payload", [])
+                    })
+                    analysis_ids.append(analysis_id)
+
+        print(f"🎥 로드된 VIDEO_EVENT 개수: {len(video_sources)}")
 
         return analysis_ids, video_sources
 
@@ -85,34 +84,33 @@ class ChatService:
         if not video_sources:
             return "[VIDEO_EVENT 데이터 없음]"
 
-        lines = [f"[VIDEO_EVENT 분석 결과 - 총 {len(video_sources)}개 영상]"]
+        lines = []
 
-        for src_idx, src in enumerate(video_sources, 1):
-            origin = src["origin_name"]
-            events = src["events"]
+        for idx, src in enumerate(video_sources, 1):
+            lines.append(f"\n--- 영상 {idx}: {src['origin_name']} ---")
 
-            lines.append(f"\n--- 영상 {src_idx}: {origin} ---")
-            for i, event in enumerate(events, 1):
+            for event in src["events"]:
                 lines.append(
-                    f"  이벤트 {i}: [{event['start_time']}초 ~ {event['end_time']}초] "
-                    f"유형={event['event_type']} | "
-                    f"설명={event['event_description']}"
+                    f"[{event.get('start_time')}초 ~ {event.get('end_time')}초] "
+                    f"{event.get('event_type')} - {event.get('event_description')}"
                 )
-
-        if len(video_sources) >= 2:
-            lines.append(f"\n[참고: {len(video_sources)}개 영상이 등록되어 있으므로 교차 분석이 가능합니다.]")
 
         return "\n".join(lines)
 
     @staticmethod
     def respond(request: ChatRequest) -> ChatResponse:
-        print(f"\n💬 채팅 요청: [{request.role}] {request.message[:50]}...")
+
+        print(f"\n💬 채팅 요청: {request.role} - {request.message}")
 
         analysis_ids, video_sources = ChatService._load_video_events()
 
         video_context = ChatService._format_video_events(video_sources)
-        system_prompt = ChatService.SYSTEM_PROMPT.format(video_event_context=video_context)
 
+        system_prompt = ChatService.SYSTEM_PROMPT.format(
+            video_event_context=video_context
+        )
+
+        # 내부 기록 (도메인 표현 유지)
         ChatService._chat_history.append({
             "role": request.role,
             "content": request.message
@@ -121,8 +119,15 @@ class ChatService:
         if len(ChatService._chat_history) > ChatService.MAX_HISTORY:
             ChatService._chat_history = ChatService._chat_history[-ChatService.MAX_HISTORY:]
 
+        # 🔥 OpenAI 전달 직전 role 변환
         messages = [{"role": "system", "content": system_prompt}]
-        messages.extend(ChatService._chat_history)
+        messages.extend([
+            {
+                "role": ChatService._map_role(m["role"]),
+                "content": m["content"]
+            }
+            for m in ChatService._chat_history
+        ])
 
         used_context = UsedContext(
             analysis_ids=analysis_ids,
@@ -133,18 +138,19 @@ class ChatService:
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=messages,
-                temperature=0.5,
-                max_tokens=2000
+                temperature=0.4,
+                max_tokens=1500
             )
 
             assistant_message = response.choices[0].message.content.strip()
 
+            # 내부 표현 유지
             ChatService._chat_history.append({
-                "role": "assistant",
+                "role": "AI",
                 "content": assistant_message
             })
 
-            print(f"   ✅ 응답 생성 완료: {len(assistant_message)}자")
+            print("✅ GPT 응답 생성 성공")
 
             return ChatResponse(
                 message=assistant_message,
@@ -152,7 +158,8 @@ class ChatService:
             )
 
         except Exception as e:
-            print(f"   ⚠️ 채팅 응답 실패: {e}")
+            print(f"❌ GPT 호출 실패: {e}")
+
             return ChatResponse(
                 message=f"응답 생성에 실패했습니다: {str(e)}",
                 used_context=used_context

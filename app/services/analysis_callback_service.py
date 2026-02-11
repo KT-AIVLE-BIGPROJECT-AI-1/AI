@@ -8,101 +8,26 @@ from app.models.analysis_callback_schema import (
 
 
 class AnalysisCallbackService:
-    """
-    분석 콜백 처리 서비스
-    AI 서버가 분석 단계별 결과를 전달하는 콜백 API
-    """
-    
-    # 메모리 저장소 (실제 프로덕션에서는 DB 사용)
-    # 구조: {case_id: {analysis_id: {stage: [data]}}}
+
     _callback_storage: Dict[str, Dict[str, Dict[str, List[Dict[str, Any]]]]] = {}
-    
-    # 조사 파일 등록 저장소
-    # 구조: {case_id: {"case_detail": {...}, "files": [...]}}
-    _investigation_storage: Dict[str, Dict[str, Any]] = {}
-    
-    # 분석 결과 저장소
-    # 구조: {analysis_id: result_data}
     _analysis_results: Dict[str, Dict[str, Any]] = {}
-    
+
     # ============================================================
-    # 조사 파일 등록 메서드
+    # 외부 AI → AI 서버 콜백 수신
     # ============================================================
-    
-    @staticmethod
-    def register_investigation_files(
-        case_id: str,
-        case_detail: dict,
-        files: List[dict]
-    ):
-        """
-        조사 파일 등록
-        InvestigationFileService에서 호출
-        """
-        AnalysisCallbackService._investigation_storage[case_id] = {
-            "case_detail": case_detail,
-            "files": files
-        }
-        
-        print(f"📂 조사 파일 등록 완료: case_id={case_id}, {len(files)}개 파일")
-    
-    @staticmethod
-    def get_investigation_files(case_id: str) -> Dict[str, Any]:
-        """등록된 조사 파일 조회"""
-        return AnalysisCallbackService._investigation_storage.get(case_id, {})
-    
-    # ============================================================
-    # 분석 결과 등록 메서드
-    # ============================================================
-    
-    @staticmethod
-    def register_analysis_result(analysis_id: str, result_data: dict):
-        """
-        분석 결과 등록
-        AnalysisDocumentService, AnalysisImageService에서 호출
-        """
-        AnalysisCallbackService._analysis_results[analysis_id] = result_data
-        print(f"📊 분석 결과 등록 완료: analysis_id={analysis_id}")
-    
-    @staticmethod
-    def get_analysis_result(analysis_id: str) -> Dict[str, Any]:
-        """등록된 분석 결과 조회"""
-        return AnalysisCallbackService._analysis_results.get(analysis_id, {})
-    
-    # ============================================================
-    # 콜백 처리 메서드
-    # ============================================================
-    
+
     @staticmethod
     def handle_callback(
         case_id: str,
         analysis_id: str,
         request: AnalysisCallbackRequest
     ) -> AnalysisCallbackResponse:
-        """
-        분석 콜백 처리
-        
-        stage별로 다른 처리:
-        - SUMMARY: 사건 요약 저장
-        - TRANSCRIPT: 전사 내용 저장
-        - KEY_STATEMENT: 핵심 진술 저장
-        - CONTRADICTION: 모순점 저장
-        - QUESTION: 질문 전략 저장
-        - VIDEO_EVENT: 영상 이벤트 저장
-        """
+
         stage = request.stage.upper()
-        
-        print("\n" + "=" * 70)
-        print(f"📥 콜백 수신")
-        print(f"   - case_id: {case_id}")
-        print(f"   - analysis_id: {analysis_id}")
-        print(f"   - stage: {stage}")
-        print("=" * 70)
-        
-        # 저장소 초기화
+
         if case_id not in AnalysisCallbackService._callback_storage:
             AnalysisCallbackService._callback_storage[case_id] = {}
-        
+
         if analysis_id not in AnalysisCallbackService._callback_storage[case_id]:
             AnalysisCallbackService._callback_storage[case_id][analysis_id] = {
                 "SUMMARY": [],
@@ -112,161 +37,134 @@ class AnalysisCallbackService:
                 "QUESTION": [],
                 "VIDEO_EVENT": []
             }
-        
-        # stage별 처리
-        if stage == "SUMMARY":
-            AnalysisCallbackService._handle_summary(case_id, analysis_id, request.payload)
-        
-        elif stage == "TRANSCRIPT":
-            AnalysisCallbackService._handle_transcript(case_id, analysis_id, request.payload)
-        
-        elif stage == "KEY_STATEMENT":
-            AnalysisCallbackService._handle_key_statement(case_id, analysis_id, request.payload)
-        
-        elif stage == "CONTRADICTION":
-            AnalysisCallbackService._handle_contradiction(case_id, analysis_id, request.payload)
-        
-        elif stage == "QUESTION":
-            AnalysisCallbackService._handle_question(case_id, analysis_id, request.payload)
-        
-        elif stage == "VIDEO_EVENT":
-            AnalysisCallbackService._handle_video_event(case_id, analysis_id, request.payload)
-        
+
+        payload = request.payload
+
+        if isinstance(payload, list):
+            AnalysisCallbackService._callback_storage[case_id][analysis_id][stage].extend(payload)
         else:
-            print(f"⚠️ 알 수 없는 stage: {stage}")
-        
-        print("=" * 70)
-        print(f"✅ 콜백 처리 완료: {stage}")
-        print("=" * 70)
-        
+            AnalysisCallbackService._callback_storage[case_id][analysis_id][stage].append(payload)
+
         return AnalysisCallbackResponse(message="Callback received")
-    
+
     # ============================================================
-    # Stage별 처리 메서드
+    # ✅ 누락됐던 메서드 복원
     # ============================================================
-    
+
     @staticmethod
-    def _handle_summary(case_id: str, analysis_id: str, payload):
-        """SUMMARY 처리"""
-        payload_dict = (
-            payload.model_dump() if hasattr(payload, 'model_dump') 
-            else dict(payload) if hasattr(payload, '__dict__') 
-            else payload
-        )
-        
-        print(f"📊 요약 저장:")
-        print(f"   - summary: {payload_dict.get('summary', '')[:50]}...")
-        print(f"   - confidence: {payload_dict.get('confidence', 0)}")
-        print(f"   - keywords: {payload_dict.get('keywords', [])}")
-        
-        AnalysisCallbackService._callback_storage[case_id][analysis_id]["SUMMARY"].append(payload_dict)
-    
-    @staticmethod
-    def _handle_transcript(case_id: str, analysis_id: str, payload):
-        """TRANSCRIPT 처리"""
-        payload_dict = (
-            payload.model_dump() if hasattr(payload, 'model_dump') 
-            else dict(payload) if hasattr(payload, '__dict__') 
-            else payload
-        )
-        
-        content = payload_dict.get('content', '')
-        print(f"📝 전사 내용 저장:")
-        print(f"   - content: {content[:100]}...")
-        
-        AnalysisCallbackService._callback_storage[case_id][analysis_id]["TRANSCRIPT"].append(payload_dict)
-    
-    @staticmethod
-    def _handle_key_statement(case_id: str, analysis_id: str, payload):
-        """KEY_STATEMENT 처리"""
-        statements = payload if isinstance(payload, list) else [payload]
-        print(f"🔑 핵심 진술 저장: {len(statements)}개")
-        
-        statements_list = []
-        for stmt in statements:
-            stmt_dict = (
-                stmt.model_dump() if hasattr(stmt, 'model_dump') 
-                else dict(stmt) if hasattr(stmt, '__dict__') 
-                else stmt
-            )
-            print(f"   - [{stmt_dict.get('tempId')}] {stmt_dict.get('content', '')[:50]}...")
-            statements_list.append(stmt_dict)
-        
-        AnalysisCallbackService._callback_storage[case_id][analysis_id]["KEY_STATEMENT"].extend(statements_list)
-    
-    @staticmethod
-    def _handle_contradiction(case_id: str, analysis_id: str, payload):
-        """CONTRADICTION 처리"""
-        contradictions = payload if isinstance(payload, list) else [payload]
-        print(f"⚠️ 모순점 저장: {len(contradictions)}개")
-        
-        contradictions_list = []
-        for contra in contradictions:
-            contra_dict = (
-                contra.model_dump() if hasattr(contra, 'model_dump') 
-                else dict(contra) if hasattr(contra, '__dict__') 
-                else contra
-            )
-            print(f"   - [{contra_dict.get('statementTempId')}] {contra_dict.get('description', '')}")
-            contradictions_list.append(contra_dict)
-        
-        AnalysisCallbackService._callback_storage[case_id][analysis_id]["CONTRADICTION"].extend(contradictions_list)
-    
-    @staticmethod
-    def _handle_question(case_id: str, analysis_id: str, payload):
-        """QUESTION 처리"""
-        questions = payload if isinstance(payload, list) else [payload]
-        print(f"❓ 질문 전략 저장: {len(questions)}개")
-        
-        questions_list = []
-        for q in questions:
-            q_dict = (
-                q.model_dump() if hasattr(q, 'model_dump') 
-                else dict(q) if hasattr(q, '__dict__') 
-                else q
-            )
-            print(f"   - [{q_dict.get('statementTempId')}] {q_dict.get('question', '')}")
-            questions_list.append(q_dict)
-        
-        AnalysisCallbackService._callback_storage[case_id][analysis_id]["QUESTION"].extend(questions_list)
-    
-    @staticmethod
-    def _handle_video_event(case_id: str, analysis_id: str, payload):
-        """VIDEO_EVENT 처리"""
-        events = payload if isinstance(payload, list) else [payload]
-        print(f"🎬 영상 이벤트 저장: {len(events)}개")
-        
-        events_list = []
-        for event in events:
-            event_dict = (
-                event.model_dump() if hasattr(event, 'model_dump') 
-                else dict(event) if hasattr(event, '__dict__') 
-                else event
-            )
-            print(f"   - [{event_dict.get('startTime')}-{event_dict.get('endTime')}s] {event_dict.get('eventType')}: {event_dict.get('description', '')}")
-            events_list.append(event_dict)
-        
-        AnalysisCallbackService._callback_storage[case_id][analysis_id]["VIDEO_EVENT"].extend(events_list)
-    
+    def register_investigation_files(case_id: str, case_detail: dict, files: list):
+        """
+        investigation_file_service에서 호출하는 초기 등록 메서드
+        분석 시작 전 storage 구조 미리 생성
+        """
+
+        if case_id not in AnalysisCallbackService._callback_storage:
+            AnalysisCallbackService._callback_storage[case_id] = {}
+
+        for f in files:
+            analysis_id = f.get("analysis_id")
+            if not analysis_id:
+                continue
+
+            if analysis_id not in AnalysisCallbackService._callback_storage[case_id]:
+                AnalysisCallbackService._callback_storage[case_id][analysis_id] = {
+                    "SUMMARY": [],
+                    "TRANSCRIPT": [],
+                    "KEY_STATEMENT": [],
+                    "CONTRADICTION": [],
+                    "QUESTION": [],
+                    "VIDEO_EVENT": []
+                }
+
+        print(f"   📂 조사 파일 {len(files)}개 등록 (case_id: {case_id})")
+
     # ============================================================
-    # 조회 메서드
+    # 내부 분석 결과 저장 + 콜백 전송
     # ============================================================
-    
+
     @staticmethod
-    def get_callbacks(case_id: str, analysis_id: str, stage: str = None) -> Any:
-        """특정 분석의 콜백 데이터 조회"""
+    def register_analysis_result(
+        analysis_id: str,
+        result_data: Dict[str, Any]
+    ):
+
+        AnalysisCallbackService._analysis_results[analysis_id] = result_data
+        print(f"   📦 분석 결과 등록: {analysis_id}")
+
+        from app.integrations.backend_callback_client import send_stage_callback_sync
+
+        case_id = result_data.get("case_id")
+        rd = result_data.get("result_data")
+
+        if not case_id:
+            return
+
+        if isinstance(rd, list):
+            for item in rd:
+                if not isinstance(item, dict):
+                    continue
+
+                stage = item.get("stage")
+                payload = item.get("payload", {})
+
+                if not stage:
+                    continue
+
+                send_stage_callback_sync(
+                    case_id=case_id,
+                    analysis_id=analysis_id,
+                    stage=stage,
+                    payload=payload
+                )
+
+        elif isinstance(rd, dict):
+            stage = rd.get("stage")
+            payload = rd.get("payload", {})
+
+            if stage:
+                send_stage_callback_sync(
+                    case_id=case_id,
+                    analysis_id=analysis_id,
+                    stage=stage,
+                    payload=payload
+                )
+
+    # ============================================================
+    # 조회용
+    # ============================================================
+
+    @staticmethod
+    def get_video_events() -> List[Dict[str, Any]]:
+        video_sources = []
+
+        for analysis_id, data in AnalysisCallbackService._analysis_results.items():
+            if data.get("file_type") != "VIDEO":
+                continue
+
+            origin_name = data.get("origin_name", f"영상_{analysis_id[:8]}")
+            rd = data.get("result_data")
+
+            if isinstance(rd, list):
+                for item in rd:
+                    if isinstance(item, dict) and item.get("stage") == "VIDEO_EVENT":
+                        video_sources.append({
+                            "analysis_id": analysis_id,
+                            "origin_name": origin_name,
+                            "events": item.get("payload", [])
+                        })
+
+        return video_sources
+
+    @staticmethod
+    def get_callbacks(case_id: str, analysis_id: str, stage: str = None):
+
         if case_id not in AnalysisCallbackService._callback_storage:
             return []
-        
+
         if analysis_id not in AnalysisCallbackService._callback_storage[case_id]:
             return []
-        
+
         if stage:
             return AnalysisCallbackService._callback_storage[case_id][analysis_id].get(stage.upper(), [])
-        else:
-            return AnalysisCallbackService._callback_storage[case_id][analysis_id]
-    
-    @staticmethod
-    def get_all_callbacks() -> Dict[str, Dict[str, Dict[str, List[Dict[str, Any]]]]]:
-        """모든 콜백 데이터 조회 (디버깅용)"""
-        return AnalysisCallbackService._callback_storage
+
+        return AnalysisCallbackService._callback_storage[case_id][analysis_id]

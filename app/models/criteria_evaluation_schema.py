@@ -1,12 +1,9 @@
 # app/models/criteria_evaluation_schema.py
+# analysis_type → file_type 통일 (#25, #26)
 
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Any
 
-
-# ============================================================
-# 공통 스키마
-# ============================================================
 
 class CaseSummary(BaseModel):
     action: str
@@ -56,34 +53,26 @@ class LegalCriterionBasic(BaseModel):
 
 
 class AnalysisInfo(BaseModel):
-    analysis_type: str = Field(..., description="DOCUMENT|IMAGE|VIDEO|AUDIO")
+    file_type: str = Field(..., description="DOCUMENT|IMAGE|VIDEO|AUDIO")
     status: str
     result_data: Any
 
-
-# ============================================================
-# 요청 스키마
-# ============================================================
 
 class CriteriaEvaluationRequest(BaseModel):
     case_detail: Optional[CaseDetail] = None
     analysis: Optional[AnalysisInfo] = None
     legal_criteria: List[Any]
-    
+
     @field_validator('legal_criteria', mode='before')
     def validate_legal_criteria(cls, v):
         if not v or len(v) == 0:
             raise ValueError("legal_criteria는 최소 1개 이상이어야 합니다")
         return v
-    
+
     def model_post_init(self, __context):
         if not self.case_detail and not self.analysis:
             raise ValueError("case_detail 또는 analysis 중 하나는 필수입니다")
 
-
-# ============================================================
-# 응답 스키마
-# ============================================================
 
 class CriteriaEvaluationResponse(BaseModel):
     status: str = Field(..., description="INSUFFICIENT|MET|NOT_MET")

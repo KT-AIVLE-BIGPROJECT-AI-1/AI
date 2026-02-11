@@ -1,16 +1,14 @@
 # app/services/analysis_media_service.py
+# 영상/음성 분석 엔진 (내부 전용 - investigation_file_service에서 호출)
 
-import uuid
 import json
 import re
 import base64
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Any
 from openai import OpenAI
 
 from app.config import settings
-from app.models.analysis_media_schema import AnalysisMediaRequest
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -60,7 +58,7 @@ class VideoAnalyzer:
         try:
             import cv2
         except ImportError:
-            raise ImportError("opencv-python이 설치되어 있지 않습니다. pip install opencv-python")
+            raise ImportError("opencv-python이 설치되어 있지 않습니다.")
 
         cap = cv2.VideoCapture(str(video_path))
         if not cap.isOpened():
@@ -91,10 +89,7 @@ class VideoAnalyzer:
             _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
             b64 = base64.b64encode(buffer).decode('utf-8')
 
-            frames.append({
-                "time_sec": round(current_time, 1),
-                "base64": b64
-            })
+            frames.append({"time_sec": round(current_time, 1), "base64": b64})
             current_time += interval_sec
 
         cap.release()
@@ -167,7 +162,7 @@ class AudioAnalyzer:
 이 전사 내용에서 **발화자를 구분**하여 대화 형식으로 재구성하십시오.
 
 **발화자 구분 기준:**
-- 질문하는 사람 → "수사관" (경찰, 검사, 조사관 등)
+- 질문하는 사람 → "수사관"
 - 답변하는 사람 → 실제 이름이 언급되면 "피의자 홍길동" 형식, 없으면 "피의자" / "참고인" / "피해자" / "목격자"
 - 첫 부분의 조사 시작 안내, 인적사항 고지 등 → "수사관"
 - "네", "맞습니다", "아닙니다" 등 짧은 답변 → 직전 질문에 대한 답변자
@@ -180,14 +175,8 @@ class AudioAnalyzer:
 
 **출력 형식 (JSON 배열만 출력):**
 [
-  {{
-    "speaker": "수사관",
-    "content": "발화 내용"
-  }},
-  {{
-    "speaker": "피의자 김루팡",
-    "content": "발화 내용"
-  }}
+  {{"speaker": "수사관", "content": "발화 내용"}},
+  {{"speaker": "피의자 김루팡", "content": "발화 내용"}}
 ]
 
 **전사 원문:**
@@ -217,12 +206,7 @@ class AudioAnalyzer:
 {transcript}
 
 **출력 형식 (JSON 배열만 출력):**
-[
-  {{
-    "temp_id": "{prefix}-1",
-    "content": "핵심 진술 내용"
-  }}
-]
+[{{"temp_id": "{prefix}-1", "content": "핵심 진술 내용"}}]
 """
 
     CONTRADICTION_PROMPT = """당신은 수사 전문 분석관입니다.
@@ -248,13 +232,7 @@ class AudioAnalyzer:
 {key_statements}
 
 **출력 형식 (JSON 배열만 출력):**
-[
-  {{
-    "statement_temp_id": "ks-1",
-    "description": "모순 내용 설명 (2-3문장)",
-    "type": "TIME|LOCATION|CONTENT|BEHAVIOR|CROSS_STATEMENT"
-  }}
-]
+[{{"statement_temp_id": "ks-1", "description": "모순 내용 설명", "type": "TIME"}}]
 """
 
     CROSS_CONTRADICTION_PROMPT = """당신은 수사 전문 분석관입니다.
@@ -263,11 +241,7 @@ class AudioAnalyzer:
 각 파일 내부의 모순뿐만 아니라, **파일 간 교차 모순**도 분석하십시오.
 
 **모순 유형:**
-- TIME: 시간 관련 모순
-- LOCATION: 장소 관련 모순
-- CONTENT: 내용 관련 모순
-- BEHAVIOR: 행동 관련 모순
-- CROSS_STATEMENT: 같은 파일 내 다른 관련자 진술과 상충
+- TIME / LOCATION / CONTENT / BEHAVIOR / CROSS_STATEMENT
 - CROSS_FILE: **서로 다른 파일의 진술이 상충** (가장 중요)
 
 **교차 모순 분석 기준:**
@@ -278,20 +252,12 @@ class AudioAnalyzer:
 
 **규칙:**
 - 모순이 없으면 빈 배열 [] 반환
-- 명확한 모순만 추출
 - CROSS_FILE 모순 시 양쪽 statement_temp_id를 모두 명시
 
 {all_transcripts}
 
 **출력 형식 (JSON 배열만 출력):**
-[
-  {{
-    "statement_temp_id": "ks-A-1",
-    "counter_statement_temp_id": "ks-B-2",
-    "description": "모순 내용 설명 (2-3문장)",
-    "type": "TIME|LOCATION|CONTENT|BEHAVIOR|CROSS_STATEMENT|CROSS_FILE"
-  }}
-]
+[{{"statement_temp_id": "ks-A-1", "counter_statement_temp_id": "ks-B-2", "description": "모순 내용", "type": "CROSS_FILE"}}]
 """
 
     QUESTION_PROMPT = """당신은 수사 전문 분석관입니다.
@@ -299,9 +265,7 @@ class AudioAnalyzer:
 아래는 전사 내용, 핵심 진술, 모순점입니다.
 추가 수사를 위한 **질문 전략**을 생성하십시오.
 
-**규칙:**
-- 3~8개 생성
-- 각 질문은 특정 핵심 진술과 연결
+**규칙:** 3~8개 생성
 
 **전사 내용:**
 {transcript}
@@ -313,12 +277,7 @@ class AudioAnalyzer:
 {contradictions}
 
 **출력 형식 (JSON 배열만 출력):**
-[
-  {{
-    "statement_temp_id": "ks-1",
-    "question": "질문 내용"
-  }}
-]
+[{{"statement_temp_id": "ks-1", "question": "질문 내용"}}]
 """
 
     CROSS_QUESTION_PROMPT = """당신은 수사 전문 분석관입니다.
@@ -330,161 +289,91 @@ class AudioAnalyzer:
 - 파일 내부 모순을 파고드는 질문
 - **파일 간 교차 모순을 검증하는 질문** (가장 중요)
 - 진술자 A의 주장을 진술자 B에게 확인하는 질문
-- 공범 관계, 역할 분담을 명확히 하는 질문
-- 알리바이를 교차 검증하는 질문
 
-**규칙:**
-- 5~12개 생성
-- 각 질문은 특정 핵심 진술과 연결
-- 교차 모순 관련 질문은 대상 진술자를 명시
+**규칙:** 5~12개 생성, 교차 모순 관련 질문은 대상 진술자를 명시
 
 {all_transcripts}
 
-**모순점 (교차 모순 포함):**
+**모순점:**
 {contradictions}
 
 **출력 형식 (JSON 배열만 출력):**
-[
-  {{
-    "statement_temp_id": "ks-A-1",
-    "target": "진술자 또는 파일명",
-    "question": "질문 내용"
-  }}
-]
+[{{"statement_temp_id": "ks-A-1", "target": "진술자", "question": "질문 내용"}}]
 """
 
     def __init__(self, client, model: str = "gpt-4o"):
         self.client = client
         self.model = model
 
-    # ----------------------------------------------------------
-    # STEP 1: Whisper 전사
-    # ----------------------------------------------------------
+    def _call_gpt(self, prompt: str, max_tokens: int = 4000, temperature: float = 0.2) -> str:
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        return response.choices[0].message.content.strip()
 
+    def _parse_json(self, text: str) -> Any:
+        text = re.sub(r"```json|```", "", text).strip()
+        result = json.loads(text)
+        return result if isinstance(result, list) else [result]
+
+    # STEP 1: Whisper 전사
     def transcribe(self, audio_path: Path) -> str:
         print(f"   🎙️ Whisper 전사 중: {audio_path.name}")
-        with open(audio_path, "rb") as audio_file:
+        with open(audio_path, "rb") as f:
             response = self.client.audio.transcriptions.create(
-                model="whisper-1", file=audio_file, language="ko", response_format="text"
+                model="whisper-1", file=f, language="ko", response_format="text"
             )
         transcript = response.strip()
         print(f"   ✅ 전사 완료: {len(transcript)}자")
         return transcript
 
-    # ----------------------------------------------------------
-    # STEP 2: 발화자 분리 (diarize)
-    # ----------------------------------------------------------
-
+    # STEP 2: 발화자 분리
     def diarize(self, raw_transcript: str) -> List[Dict]:
-        """GPT-4o로 발화자 분리"""
         print(f"   👥 발화자 분리 중...")
-
         prompt = self.DIARIZE_PROMPT.format(transcript=raw_transcript)
-
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=4000
-        )
-
-        result_text = response.choices[0].message.content.strip()
-        result_text = re.sub(r"```json|```", "", result_text).strip()
-
+        result_text = self._call_gpt(prompt)
         try:
-            dialogues = json.loads(result_text)
-            if not isinstance(dialogues, list):
-                dialogues = [dialogues]
-
-            validated = []
-            for d in dialogues:
-                validated.append({
-                    "speaker": str(d.get("speaker", "미상")),
-                    "content": str(d.get("content", ""))
-                })
-
+            dialogues = self._parse_json(result_text)
+            validated = [{"speaker": str(d.get("speaker", "미상")), "content": str(d.get("content", ""))} for d in dialogues]
             print(f"   ✅ 발화자 분리 완료: {len(validated)}개 발화")
-
-            speakers = {}
-            for d in validated:
-                s = d["speaker"]
-                speakers[s] = speakers.get(s, 0) + 1
-            for s, count in speakers.items():
-                print(f"      - {s}: {count}회")
-
             return validated
-
         except json.JSONDecodeError as e:
             print(f"   ⚠️ 발화자 분리 파싱 실패: {e}")
             return [{"speaker": "미상", "content": raw_transcript}]
 
-    # ----------------------------------------------------------
     # 주요 진술자 식별
-    # ----------------------------------------------------------
-
     def _get_main_speaker(self, dialogues: List[Dict]) -> str:
-        """발화자 목록에서 수사관이 아닌 주요 진술자 추출"""
         speakers = {}
         for d in dialogues:
             s = d["speaker"]
             if "수사관" not in s and "조사관" not in s and "경위" not in s:
                 speakers[s] = speakers.get(s, 0) + 1
+        return max(speakers, key=speakers.get) if speakers else "미상"
 
-        if speakers:
-            return max(speakers, key=speakers.get)
-        return "미상"
-
-    # ----------------------------------------------------------
     # STEP 3: 핵심 진술 추출
-    # ----------------------------------------------------------
-
     def extract_key_statements(self, diarized_text: str, prefix: str = "ks", source_label: str = "음성") -> List[Dict]:
         print(f"   🔑 핵심 진술 추출 중... [{source_label}]")
-        prompt = self.KEY_STATEMENT_PROMPT.format(
-            transcript=diarized_text, prefix=prefix, source_label=source_label
-        )
-        response = self.client.chat.completions.create(
-            model=self.model, messages=[{"role": "user", "content": prompt}],
-            temperature=0.2, max_tokens=2000
-        )
-        result_text = re.sub(r"```json|```", "", response.choices[0].message.content.strip()).strip()
+        prompt = self.KEY_STATEMENT_PROMPT.format(transcript=diarized_text, prefix=prefix, source_label=source_label)
         try:
-            statements = json.loads(result_text)
-            if not isinstance(statements, list):
-                statements = [statements]
-            print(f"   ✅ {len(statements)}개 핵심 진술 추출")
-            return statements
+            return self._parse_json(self._call_gpt(prompt, max_tokens=2000))
         except json.JSONDecodeError as e:
             print(f"   ⚠️ 핵심 진술 파싱 실패: {e}")
             return []
 
-    # ----------------------------------------------------------
-    # STEP 4: 모순점 분석 (단일)
-    # ----------------------------------------------------------
-
+    # STEP 4a: 모순 분석 (단일)
     def find_contradictions(self, diarized_text: str, key_statements: List[Dict]) -> List[Dict]:
         print(f"   ⚠️ 모순점 분석 중...")
         ks_text = json.dumps(key_statements, ensure_ascii=False, indent=2)
         prompt = self.CONTRADICTION_PROMPT.format(transcript=diarized_text, key_statements=ks_text)
-        response = self.client.chat.completions.create(
-            model=self.model, messages=[{"role": "user", "content": prompt}],
-            temperature=0.2, max_tokens=2000
-        )
-        result_text = re.sub(r"```json|```", "", response.choices[0].message.content.strip()).strip()
         try:
-            contradictions = json.loads(result_text)
-            if not isinstance(contradictions, list):
-                contradictions = [contradictions]
-            print(f"   ✅ {len(contradictions)}개 모순점 발견")
-            return contradictions
-        except json.JSONDecodeError as e:
-            print(f"   ⚠️ 모순점 파싱 실패: {e}")
+            return self._parse_json(self._call_gpt(prompt, max_tokens=2000))
+        except json.JSONDecodeError:
             return []
 
-    # ----------------------------------------------------------
-    # STEP 4: 교차 모순 분석 (다수 파일)
-    # ----------------------------------------------------------
-
+    # STEP 4b: 교차 모순 분석
     def find_cross_contradictions(self, all_sources: List[Dict]) -> List[Dict]:
         print(f"\n   🔀 교차 모순 분석 중... ({len(all_sources)}개 파일)")
         sections = []
@@ -492,56 +381,29 @@ class AudioAnalyzer:
             ks_text = json.dumps(src["key_statements"], ensure_ascii=False, indent=2)
             sections.append(
                 f"[파일: {src['label']} / 주요 진술자: {src.get('speaker', '미상')}]\n"
-                f"전사 내용:\n{src['diarized_text']}\n\n"
-                f"핵심 진술:\n{ks_text}"
+                f"전사 내용:\n{src['diarized_text']}\n\n핵심 진술:\n{ks_text}"
             )
-        all_transcripts = "\n\n" + "\n\n---\n\n".join(sections)
+        all_transcripts = "\n\n---\n\n".join(sections)
         prompt = self.CROSS_CONTRADICTION_PROMPT.format(all_transcripts=all_transcripts)
-        response = self.client.chat.completions.create(
-            model=self.model, messages=[{"role": "user", "content": prompt}],
-            temperature=0.2, max_tokens=3000
-        )
-        result_text = re.sub(r"```json|```", "", response.choices[0].message.content.strip()).strip()
         try:
-            contradictions = json.loads(result_text)
-            if not isinstance(contradictions, list):
-                contradictions = [contradictions]
-            print(f"   ✅ 교차 모순 {len(contradictions)}개 발견")
-            return contradictions
-        except json.JSONDecodeError as e:
-            print(f"   ⚠️ 교차 모순 파싱 실패: {e}")
+            return self._parse_json(self._call_gpt(prompt, max_tokens=3000))
+        except json.JSONDecodeError:
             return []
 
-    # ----------------------------------------------------------
-    # STEP 5: 질문 생성 (단일)
-    # ----------------------------------------------------------
-
+    # STEP 5a: 질문 생성 (단일)
     def generate_questions(self, diarized_text: str, key_statements: List[Dict], contradictions: List[Dict]) -> List[Dict]:
         print(f"   ❓ 질문 전략 생성 중...")
-        ks_text = json.dumps(key_statements, ensure_ascii=False, indent=2)
-        ct_text = json.dumps(contradictions, ensure_ascii=False, indent=2)
         prompt = self.QUESTION_PROMPT.format(
-            transcript=diarized_text, key_statements=ks_text, contradictions=ct_text
+            transcript=diarized_text,
+            key_statements=json.dumps(key_statements, ensure_ascii=False, indent=2),
+            contradictions=json.dumps(contradictions, ensure_ascii=False, indent=2)
         )
-        response = self.client.chat.completions.create(
-            model=self.model, messages=[{"role": "user", "content": prompt}],
-            temperature=0.3, max_tokens=2000
-        )
-        result_text = re.sub(r"```json|```", "", response.choices[0].message.content.strip()).strip()
         try:
-            questions = json.loads(result_text)
-            if not isinstance(questions, list):
-                questions = [questions]
-            print(f"   ✅ {len(questions)}개 질문 생성")
-            return questions
-        except json.JSONDecodeError as e:
-            print(f"   ⚠️ 질문 파싱 실패: {e}")
+            return self._parse_json(self._call_gpt(prompt, max_tokens=2000, temperature=0.3))
+        except json.JSONDecodeError:
             return []
 
-    # ----------------------------------------------------------
-    # STEP 5: 교차 질문 생성 (다수 파일)
-    # ----------------------------------------------------------
-
+    # STEP 5b: 교차 질문 생성
     def generate_cross_questions(self, all_sources: List[Dict], contradictions: List[Dict]) -> List[Dict]:
         print(f"\n   🔀❓ 교차 질문 생성 중...")
         sections = []
@@ -549,209 +411,61 @@ class AudioAnalyzer:
             ks_text = json.dumps(src["key_statements"], ensure_ascii=False, indent=2)
             sections.append(
                 f"[파일: {src['label']} / 주요 진술자: {src.get('speaker', '미상')}]\n"
-                f"전사 내용:\n{src['diarized_text']}\n\n"
-                f"핵심 진술:\n{ks_text}"
+                f"전사 내용:\n{src['diarized_text']}\n\n핵심 진술:\n{ks_text}"
             )
-        all_transcripts = "\n\n" + "\n\n---\n\n".join(sections)
-        ct_text = json.dumps(contradictions, ensure_ascii=False, indent=2)
         prompt = self.CROSS_QUESTION_PROMPT.format(
-            all_transcripts=all_transcripts, contradictions=ct_text
+            all_transcripts="\n\n---\n\n".join(sections),
+            contradictions=json.dumps(contradictions, ensure_ascii=False, indent=2)
         )
-        response = self.client.chat.completions.create(
-            model=self.model, messages=[{"role": "user", "content": prompt}],
-            temperature=0.3, max_tokens=3000
-        )
-        result_text = re.sub(r"```json|```", "", response.choices[0].message.content.strip()).strip()
         try:
-            questions = json.loads(result_text)
-            if not isinstance(questions, list):
-                questions = [questions]
-            print(f"   ✅ 교차 질문 {len(questions)}개 생성")
-            return questions
-        except json.JSONDecodeError as e:
-            print(f"   ⚠️ 교차 질문 파싱 실패: {e}")
+            return self._parse_json(self._call_gpt(prompt, max_tokens=3000, temperature=0.3))
+        except json.JSONDecodeError:
             return []
 
-    # ----------------------------------------------------------
     # 전체 파이프라인
-    # ----------------------------------------------------------
-
     def analyze_audio(self, audio_path: Path, previous_sources: List[Dict] = None) -> tuple:
-        """
-        오디오 전체 분석 파이프라인
-        1. Whisper 전사
-        2. GPT-4o 발화자 분리
-        3. 핵심 진술 추출
-        4. 모순점 분석 (단일 또는 교차)
-        5. 질문 전략 생성 (단일 또는 교차)
-        """
         print(f"\n   📋 오디오 분석 파이프라인 시작")
 
         file_index = len(previous_sources) if previous_sources else 0
         prefix = f"ks-{chr(65 + file_index)}"
         source_label = audio_path.stem
 
-        # STEP 1: Whisper 전사
         raw_transcript = self.transcribe(audio_path)
-
-        # STEP 2: 발화자 분리
         dialogues = self.diarize(raw_transcript)
-
-        # 주요 진술자 식별
         speaker = self._get_main_speaker(dialogues)
         print(f"   👤 주요 진술자: {speaker}")
 
-        # 발화자 분리된 텍스트 (이후 분석에 사용)
-        diarized_text = "\n".join(
-            f"[{d['speaker']}] {d['content']}" for d in dialogues
-        )
-
-        # STEP 3: 핵심 진술
+        diarized_text = "\n".join(f"[{d['speaker']}] {d['content']}" for d in dialogues)
         key_statements = self.extract_key_statements(diarized_text, prefix=prefix, source_label=source_label)
 
         current_source = {
-            "label": source_label,
-            "prefix": prefix,
-            "speaker": speaker,
-            "transcript": raw_transcript,
-            "diarized_text": diarized_text,
-            "dialogues": dialogues,
-            "key_statements": key_statements
+            "label": source_label, "prefix": prefix, "speaker": speaker,
+            "transcript": raw_transcript, "diarized_text": diarized_text,
+            "dialogues": dialogues, "key_statements": key_statements
         }
 
-        # STEP 4 & 5: 모순 + 질문
         if previous_sources and len(previous_sources) > 0:
             all_sources = previous_sources + [current_source]
-            print(f"\n   🔀 교차 분석 모드: {len(all_sources)}개 파일")
             contradictions = self.find_cross_contradictions(all_sources)
             questions = self.generate_cross_questions(all_sources, contradictions)
         else:
             contradictions = self.find_contradictions(diarized_text, key_statements)
             questions = self.generate_questions(diarized_text, key_statements, contradictions)
 
-        print(f"\n   📊 분석 결과 요약:")
-        print(f"      - 주요 진술자: {speaker}")
-        print(f"      - 발화: {len(dialogues)}개")
-        print(f"      - 핵심 진술: {len(key_statements)}개 (prefix: {prefix})")
-        print(f"      - 모순점: {len(contradictions)}개")
-        print(f"      - 질문: {len(questions)}개")
-        if previous_sources:
-            print(f"      - 교차 분석 대상: {len(previous_sources)}개 이전 파일")
+        print(f"\n   📊 분석 결과: 발화 {len(dialogues)}개 / 핵심진술 {len(key_statements)}개 / 모순 {len(contradictions)}개 / 질문 {len(questions)}개")
 
-        return [
-            {
-                "stage": "TRANSCRIPT",
-                "payload": {
-                    "content": dialogues
-                }
-            },
+        stages = [
+            {"stage": "TRANSCRIPT", "payload": {"content": dialogues}},
             {"stage": "KEY_STATEMENT", "payload": key_statements},
             {"stage": "CONTRADICTION", "payload": contradictions},
             {"stage": "QUESTION", "payload": questions}
-        ], current_source
+        ]
+
+        return stages, current_source
 
 
 # ============================================================
-# 기존 함수들 (콜백용)
-# ============================================================
-
-def create_analysis_vdo_from_video_events(video_events, investigate_files):
-    analysis_vdo_list = []
-    events_by_origin = {}
-    for video_event in video_events:
-        origin = video_event.get("origin_name")
-        if origin not in events_by_origin:
-            events_by_origin[origin] = []
-        for event in video_event.get("payload", []):
-            events_by_origin[origin].append({
-                "event_id": str(uuid.uuid4()), "analysis_id": video_event.get("analysis_id"),
-                "origin_name": origin, "start_time": event.get("start_time", 0.0),
-                "end_time": event.get("end_time", 0.0), "event_type": event.get("event_type", "OTHER"),
-                "event_description": event.get("event_description", ""), "created_at": video_event.get("created_at")
-            })
-    for origin_name, events in events_by_origin.items():
-        file_id = None
-        for rec in investigate_files:
-            if rec.get("origin_name") == origin_name:
-                file_id = rec["file_id"]
-                break
-        analysis_vdo_list.append({
-            "analysis_id": str(uuid.uuid4()), "file_id": file_id, "file_type": "VIDEO",
-            "status": "COMPLETED" if file_id else "PENDING", "result_data": events,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-    return analysis_vdo_list
-
-
-def create_analysis_aud(file_id, dialogue, status="COMPLETED"):
-    return {
-        "analysis_id": str(uuid.uuid4()), "file_id": file_id, "file_type": "AUDIO",
-        "status": status, "payload": {"stage": "TRANSCRIPT", "content": dialogue},
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-
-
-def utc_now_iso():
-    return datetime.now(timezone.utc).isoformat()
-
-
-def create_analysis_stt(transcript_list, key_statement_list, contradiction_list, question_list):
-    analysis_groups = {}
-    for t in transcript_list:
-        aid = t.get("analysis_id")
-        fid = t.get("file_id")
-        if not aid:
-            continue
-        if aid not in analysis_groups:
-            analysis_groups[aid] = {
-                "file_id": fid, "transcript": [],
-                "key_statements": [], "contradictions": [], "questions": []
-            }
-        analysis_groups[aid]["transcript"] = t.get("payload", {}).get("content", [])
-    for ks in key_statement_list:
-        aid = ks.get("analysis_id")
-        if aid and aid in analysis_groups:
-            analysis_groups[aid]["key_statements"].append(ks)
-    for cont in contradiction_list:
-        aid = cont.get("analysis_id")
-        if aid and aid in analysis_groups:
-            analysis_groups[aid]["contradictions"].append(cont)
-    for q in question_list:
-        aid = q.get("analysis_id")
-        if aid and aid in analysis_groups:
-            analysis_groups[aid]["questions"].append(q)
-    result = []
-    for aid, data in analysis_groups.items():
-        rd = {}
-        if data["transcript"]:
-            rd["transcript"] = data["transcript"]
-        ks_list = [
-            {"temp_id": ks.get("payload", {}).get("temp_id", ""), "content": ks.get("payload", {}).get("content", "")}
-            for ks in data["key_statements"]
-        ]
-        if ks_list:
-            rd["key_statements"] = ks_list
-        ct_list = [
-            {"statement_temp_id": c.get("payload", {}).get("statement_temp_id", ""), "type": c.get("payload", {}).get("type", ""), "description": c.get("payload", {}).get("description", "")}
-            for c in data["contradictions"]
-        ]
-        if ct_list:
-            rd["contradictions"] = ct_list
-        q_list = [
-            {"statement_temp_id": q.get("payload", {}).get("statement_temp_id", ""), "question": q.get("payload", {}).get("question", "")}
-            for q in data["questions"]
-        ]
-        if q_list:
-            rd["questions"] = q_list
-        result.append({
-            "analysis_id": aid, "file_id": data["file_id"], "file_type": "AUDIO",
-            "status": "COMPLETED", "result_data": rd, "created_at": utc_now_iso()
-        })
-    return result
-
-
-# ============================================================
-# Analyzer 인스턴스
+# Analyzer 인스턴스 (investigation_file_service에서 import하여 사용)
 # ============================================================
 
 video_analyzer = VideoAnalyzer(client=client, model="gpt-4o")
@@ -759,95 +473,8 @@ audio_analyzer = AudioAnalyzer(client=client, model="gpt-4o")
 
 
 # ============================================================
-# FastAPI Service
+# 오디오 교차분석용 상태 저장
 # ============================================================
 
 class AnalysisMediaService:
-
     _audio_sources: List[Dict] = []
-
-    @staticmethod
-    def analyze_media(request: AnalysisMediaRequest):
-        print(f"\n🎬 미디어 분석 시작: {request.file_id}")
-        print(f"   - file_type: {request.file_type}")
-        print(f"   - file_path: {request.file_path}")
-        print(f"   - presigned_url: {'있음' if request.presigned_url else '없음'}")
-
-        file_type_lower = request.file_type.lower()
-        temp_file = None
-
-        # presigned_url이 있으면 다운로드, 없으면 로컬 경로 사용
-        if request.presigned_url:
-            from app.utils.file_downloader import download_from_presigned_url
-            file_path = download_from_presigned_url(request.presigned_url)
-            temp_file = file_path  # 나중에 삭제할 임시 파일
-        elif request.file_path:
-            file_path = Path(request.file_path)
-        else:
-            raise ValueError("file_path 또는 presigned_url 중 하나는 필수입니다")
-
-        if not file_path.exists():
-            raise FileNotFoundError(f"파일을 찾을 수 없습니다: {file_path}")
-
-        analysis_id = str(uuid.uuid4())
-
-        try:
-            if file_type_lower == "video":
-                print(f"   🎥 비디오 분석 모드")
-                video_event = video_analyzer.analyze_video(file_path)
-                result_data = [video_event]
-
-                from app.services.analysis_callback_service import AnalysisCallbackService
-                AnalysisCallbackService.register_analysis_result(
-                    analysis_id=analysis_id,
-                    result_data={
-                        "case_id": request.case_id, "analysis_id": analysis_id,
-                        "file_id": request.file_id, "file_type": "VIDEO",
-                        "origin_name": request.origin_name,
-                        "status": "COMPLETED", "result_data": result_data
-                    }
-                )
-                return {"analysis_id": analysis_id, "result_data": result_data}
-
-            elif file_type_lower == "audio":
-                print(f"   🎙️ 오디오 분석 모드")
-
-                stages, current_source = audio_analyzer.analyze_audio(
-                    file_path,
-                    previous_sources=AnalysisMediaService._audio_sources
-                )
-
-                AnalysisMediaService._audio_sources.append(current_source)
-
-                from app.services.analysis_callback_service import AnalysisCallbackService
-                AnalysisCallbackService.register_analysis_result(
-                    analysis_id=analysis_id,
-                    result_data={
-                        "case_id": request.case_id, "analysis_id": analysis_id,
-                        "file_id": request.file_id, "file_type": "AUDIO",
-                        "origin_name": request.origin_name,
-                        "status": "COMPLETED", "result_data": stages
-                    }
-                )
-                return {"analysis_id": analysis_id, "result_data": stages}
-
-            else:
-                raise ValueError(f"지원하지 않는 파일 타입: {request.file_type}")
-
-        finally:
-            # 임시 파일 정리
-            if temp_file:
-                from app.utils.file_downloader import cleanup_temp_file
-                cleanup_temp_file(temp_file)
-
-    @staticmethod
-    def analyze_video(video_events, investigate_files):
-        return create_analysis_vdo_from_video_events(video_events, investigate_files)
-
-    @staticmethod
-    def analyze_audio(file_id, dialogue, status="COMPLETED"):
-        return create_analysis_aud(file_id, dialogue, status)
-
-    @staticmethod
-    def create_stt_analysis(transcript_list, key_statement_list, contradiction_list, question_list):
-        return create_analysis_stt(transcript_list, key_statement_list, contradiction_list, question_list)

@@ -1,11 +1,12 @@
 # app/models/analysis_callback_schema.py
+# camelCase → snake_case 전면 변경 (#18)
 
 from pydantic import BaseModel, Field
 from typing import List, Optional, Union, Any
 
 
 # ============================================================
-# Payload 스키마들
+# Payload 스키마 (snake_case)
 # ============================================================
 
 class SummaryPayload(BaseModel):
@@ -15,30 +16,32 @@ class SummaryPayload(BaseModel):
 
 
 class TranscriptPayload(BaseModel):
-    content: str
+    content: Any  # str 또는 List[{"speaker": ..., "content": ...}]
 
 
 class KeyStatement(BaseModel):
-    tempId: str
+    temp_id: str
     content: str
 
 
 class Contradiction(BaseModel):
-    statementTempId: str
+    statement_temp_id: str
+    counter_statement_temp_id: Optional[str] = None
     description: str
-    type: str  # TIME, LOCATION, CONTENT 등
+    type: str  # TIME, LOCATION, CONTENT, BEHAVIOR, CROSS_STATEMENT, CROSS_FILE
 
 
 class Question(BaseModel):
-    statementTempId: str
+    statement_temp_id: str
+    target: Optional[str] = None
     question: str
 
 
 class VideoEvent(BaseModel):
-    startTime: float
-    endTime: float
-    eventType: str  # ASSAULT, THEFT 등
-    description: str
+    start_time: float
+    end_time: float
+    event_type: str  # ASSAULT, THEFT, SUSPICIOUS, MOVEMENT, INTERACTION, OTHER
+    event_description: str
 
 
 # ============================================================
@@ -47,7 +50,7 @@ class VideoEvent(BaseModel):
 
 class AnalysisCallbackRequest(BaseModel):
     stage: str = Field(
-        ..., 
+        ...,
         description="SUMMARY | TRANSCRIPT | KEY_STATEMENT | CONTRADICTION | QUESTION | VIDEO_EVENT"
     )
     payload: Union[
@@ -57,7 +60,7 @@ class AnalysisCallbackRequest(BaseModel):
         List[Contradiction],
         List[Question],
         List[VideoEvent],
-        dict  # 기타 payload
+        dict
     ]
 
 
