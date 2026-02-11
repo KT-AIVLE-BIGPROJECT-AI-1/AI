@@ -17,7 +17,7 @@ class AnalysisDocumentRequest(BaseModel):
 class AnalysisDocumentResponse(BaseModel):
     analysis_id: str
     file_id: str
-    analysis_type: str = "DOC"
+    file_type: str = "DOCUMENT"
     status: str = Field(default="COMPLETED", description="PROCESSING, COMPLETED, PENDING")
     result_data: str
     created_at: str

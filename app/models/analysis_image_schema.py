@@ -17,7 +17,7 @@ class AnalysisImageRequest(BaseModel):
 class AnalysisImageResponse(BaseModel):
     analysis_id: str
     file_id: str
-    analysis_type: str = "IMG"
+    file_type: str = "IMAGE"
     status: str = Field(default="COMPLETED", description="PROCESSING, COMPLETED, PENDING")
     result_data: str
     created_at: str

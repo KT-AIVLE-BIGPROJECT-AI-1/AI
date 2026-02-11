@@ -1,115 +1,64 @@
 # app/routers/analysis_callback.py
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
 from app.models.analysis_callback_schema import (
     AnalysisCallbackRequest,
-    AnalysisResultItem
+    AnalysisCallbackResponse
 )
 from app.services.analysis_callback_service import AnalysisCallbackService
 
 router = APIRouter(prefix="/cases", tags=["Analysis - Callback"])
 
 
-@router.post("/{case_id}/analysis/{analysis_id}/callback")
+@router.post("/{case_id}/analysis/{analysis_id}/callback", response_model=AnalysisCallbackResponse)
 async def handle_analysis_callback(
     case_id: str,
     analysis_id: str,
     request: AnalysisCallbackRequest
 ):
     """
-    분석 콜백 (저장 / 조회)
+    분석 콜백 처리
     
-    각 stage의 JSON은 이전 단계에서 실제로 생성된 데이터.
-    SUMMARY는 ANALYSIS_DOC/IMG 결과에서 가져옴.
+    **AI 서버가 분석 단계별 결과를 전달하는 콜백 API**
     
-    ---
+    **Path Parameters:**
+    - case_id: 사건 ID
+    - analysis_id: 분석 작업 ID
     
-    **저장 모드** (외부 AI → 서버, payload에 데이터 있음):
+    **지원 stage:**
+    - SUMMARY: 사건 요약 정보
+    - TRANSCRIPT: 전사 내용
+    - KEY_STATEMENT: 핵심 진술
+    - CONTRADICTION: 진술 모순점
+    - QUESTION: 질문 전략
+    - VIDEO_EVENT: 영상 이벤트
     
-    요청:
-    ```json
-    {"stage": "TRANSCRIPT", "payload": {"content": "사건 당시..."}}
-    ```
-    응답:
-    ```json
-    {"message": "Callback received"}
-    ```
+    **사용 방법:**
+    - 각 분석 단계 완료 시 해당 stage로 콜백 호출
+    - 동일한 분석 작업에 대해 여러 번 호출 가능
+    - 각 호출은 하나의 stage 결과만 포함
     
-    ---
-    
-    **조회 모드** (백엔드 → AI, payload가 {}):
-    
-    요청:
-    ```json
-    {"stage": "TRANSCRIPT | KEY_STATEMENT | CONTRADICTION | QUESTION | VIDEO_EVENT | SUMMARY", "payload": {}}
-    ```
-    
-    응답 — 문서/이미지:
-    ```json
+    **요청 예시:**
+```json
     {
-      "analysis_id": "doc-file-id",
-      "result_data": {
-        "stage": "SUMMARY",
-        "payload": {"summary": "...", "confidence": 0.93, "keywords": [...]}
+      "stage": "SUMMARY",
+      "payload": {
+        "summary": "사건 관련 핵심 내용 요약",
+        "confidence": 0.93,
+        "keywords": ["폭행", "현장", "CCTV"]
       }
     }
-    ```
+```
     
-    응답 — 음성 (CONTRADICTION 있는 경우):
-    ```json
-    {
-      "analysis_id": "audio-file-id",
-      "result_data": [
-        {"stage": "TRANSCRIPT", "payload": {"content": "..."}},
-        {"stage": "KEY_STATEMENT", "payload": [{"temp_id": "ks-1", "content": "..."}]},
-        {"stage": "CONTRADICTION", "payload": [{"statement_temp_id": "ks-1", "description": "...", "type": "TIME"}]},
-        {"stage": "QUESTION", "payload": [{"statement_temp_id": "ks-1", "question": "..."}]}
-      ]
-    }
-    ```
-    
-    응답 — 음성 (CONTRADICTION 없는 경우):
-    ```json
-    {
-      "analysis_id": "audio-file-id",
-      "result_data": [
-        {"stage": "TRANSCRIPT", "payload": {"content": "..."}},
-        {"stage": "KEY_STATEMENT", "payload": [{"temp_id": "ks-1", "content": "..."}]}
-      ]
-    }
-    ```
-    
-    응답 — 영상:
-    ```json
-    {
-      "analysis_id": "video-file-id",
-      "result_data": [
-        {"stage": "VIDEO_EVENT", "payload": [{"start_time": 12.3, "end_time": 18.7, "event_type": "ASSAULT", "event_description": "..."}]},
-        {"stage": "VIDEO_EVENT", "payload": [{"start_time": 25.1, "end_time": 32.4, "event_type": "ESCAPE", "event_description": "..."}]}
-      ]
-    }
-    ```
-    
-    **음성 파일 stage 의존성:**
-    - TRANSCRIPT → 항상 생성
-    - KEY_STATEMENT → 항상 생성
-    - CONTRADICTION → KEY_STATEMENT에서 모순이 감지된 경우에만 생성
-    - QUESTION → CONTRADICTION이 있을 때만 생성 (CONTRADICTION 없으면 QUESTION도 없음)
+    **응답:**
+    - 항상 200 OK와 "Callback received" 메시지 반환
     """
     try:
-        result = AnalysisCallbackService.handle_callback(
+        response = AnalysisCallbackService.handle_callback(
             case_id=case_id,
             analysis_id=analysis_id,
             request=request
         )
-        
-        # 저장 모드 → {"message": "Callback received"}
-        if isinstance(result, dict):
-            return JSONResponse(content=result)
-        
-        # 조회 모드 → 파일별 분석 결과 배열
-        return JSONResponse(content=[item.model_dump() for item in result])
-    
+        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"콜백 처리 실패: {str(e)}")

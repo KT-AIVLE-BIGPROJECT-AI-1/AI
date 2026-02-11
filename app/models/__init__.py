@@ -1,6 +1,6 @@
 # app/models/__init__.py
 
-from .case_schema import CaseRequest, CaseResponse, CaseSummary
+from .case_schema import CaseRequest, CaseResponse, CaseSummary, CaseSummaryResponse
 from .legal_criteria_schema import (
     LegalCriteriaRequest, 
     LegalCriteriaResponse,
@@ -26,10 +26,12 @@ from .analysis_image_schema import (
     AnalysisImageRequest,
     AnalysisImageResponse
 )
+from .analysis_media_schema import (
+    AnalysisMediaRequest,
+)
 from .analysis_callback_schema import (
     AnalysisCallbackRequest,
-    AnalysisResultItem,
-    StageResult
+    AnalysisCallbackResponse
 )
 from .analysis_final_schema import (
     AnalysisFinalRequest,
@@ -62,6 +64,7 @@ __all__ = [
     "CaseRequest",
     "CaseResponse",
     "CaseSummary",
+    "CaseSummaryResponse",
     "LegalCriteriaRequest",
     "LegalCriteriaResponse",
     "LegalIssue",
@@ -77,9 +80,9 @@ __all__ = [
     "AnalysisDocumentResponse",
     "AnalysisImageRequest",
     "AnalysisImageResponse",
+    "AnalysisMediaRequest",
     "AnalysisCallbackRequest",
-    "AnalysisResultItem",
-    "StageResult",
+    "AnalysisCallbackResponse",
     "AnalysisFinalRequest",
     "AnalysisFinalResponse",
     "ReportInterimRequest",

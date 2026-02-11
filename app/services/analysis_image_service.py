@@ -17,18 +17,7 @@ from app.models.analysis_image_schema import (
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
-# ============================================================
-# ImageAnalyzerV2 (AI.ipynb와 100% 동일)
-# ============================================================
-
 class ImageAnalyzerV2:
-    """
-    이미지 분석 엔진 (사건 연결형)
-    - 사진의 사실만 기술
-    - 사건 개요와의 관련성 명시
-    - 추정/판단/미학적 묘사 금지
-    """
-
     FORENSIC_PROMPT = """당신은 수사 보조 이미지 분석 담당자입니다.
 
 아래에는 사건 개요와 사진이 제공됩니다.
@@ -66,7 +55,6 @@ class ImageAnalyzerV2:
         self.client = client
         self.model = model
 
-    # ---------------- 이미지 메타 ----------------
     def _image_to_data_url(self, path: Path) -> str:
         with open(path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
@@ -80,30 +68,22 @@ class ImageAnalyzerV2:
             w, h = im.size
         return f"- 파일명: {path.name}\n- 해상도: {w}x{h}\n"
 
-    # ---------------- CASE를 문자열로 변환하는 내부 메서드 ----------------
     def _format_case_info(self, case_json: dict) -> str:
-        """CASE JSON을 사건 정보 문자열로 변환"""
         if not case_json:
             return "사건 정보 없음"
         
         info_parts = []
-        
         if "title" in case_json:
             info_parts.append(f"사건명: {case_json['title']}")
-        
         if "type" in case_json:
             info_parts.append(f"사건 유형: {case_json['type']}")
-        
         if "description" in case_json:
             info_parts.append(f"사건 개요: {case_json['description']}")
-        
         occurred_time = case_json.get('occurred_at', case_json.get('occured_at', ''))
         if occurred_time:
             info_parts.append(f"발생 일시: {occurred_time}")
-        
         if "location" in case_json:
             info_parts.append(f"발생 장소: {case_json['location']}")
-        
         if "summary" in case_json and case_json["summary"]:
             summary = case_json["summary"]
             if isinstance(summary, dict) and any(summary.values()):
@@ -111,24 +91,11 @@ class ImageAnalyzerV2:
                 for key, value in summary.items():
                     if value:
                         info_parts.append(f"  - {key}: {value}")
-        
         return "\n".join(info_parts)
 
-    # ---------------- 분석 ----------------
     def analyze_one(self, image_path: Path, case_json: dict = None, client=None) -> str:
-        """
-        이미지를 분석하여 설명문 생성
-        
-        Args:
-            image_path: 이미지 파일 경로
-            case_json: CASE JSON
-            client: OpenAI 클라이언트
-        """
         api_client = client or self.client
-        
-        # CASE를 문자열로 변환
         case_info = self._format_case_info(case_json)
-        
         meta_text = self._get_image_meta(image_path)
         data_url = self._image_to_data_url(image_path)
 
@@ -154,10 +121,6 @@ class ImageAnalyzerV2:
         return response.choices[0].message.content.strip()
 
 
-# ============================================================
-# 이미지 → 고정 JSON (ANALYSIS_IMG)
-# ============================================================
-
 def analyze_image_to_fixed_json(
     analyzer: ImageAnalyzerV2,
     analysis_id: str,
@@ -166,12 +129,7 @@ def analyze_image_to_fixed_json(
     case_json: dict = None,
     client = None
 ) -> Dict[str, Any]:
-    """
-    이미지를 분석하여 ANALYSIS_IMG JSON 생성
-    """
-
     created_at = datetime.now(timezone.utc).isoformat()
-
     status = "PROCESSING"
 
     try:
@@ -184,16 +142,12 @@ def analyze_image_to_fixed_json(
     return {
         "analysis_id": analysis_id,
         "file_id": file_id,
-        "analysis_type": "IMG",
+        "file_type": "IMAGE",
         "status": status,
         "result_data": analysis_text,
         "created_at": created_at
     }
 
-
-# ============================================================
-# FastAPI Service
-# ============================================================
 
 image_analyzer = ImageAnalyzerV2(
     client=client,
@@ -202,23 +156,17 @@ image_analyzer = ImageAnalyzerV2(
 
 
 class AnalysisImageService:
-    """이미지 분석 서비스"""
-    
     @staticmethod
     def analyze_image(request: AnalysisImageRequest) -> AnalysisImageResponse:
-        """이미지 분석 실행"""
         print(f"\n🖼️ 이미지 분석 시작: {request.file_id}")
         
-        # 파일 경로
         file_path = Path(request.file_path)
-        
-        # ✅ 수정: API 명세서에 case_detail 필드가 없으므로 None 처리
+        analysis_id = str(uuid.uuid4())
         case_json = None
         
-        # 분석 실행
         result = analyze_image_to_fixed_json(
             analyzer=image_analyzer,
-            analysis_id=request.analysis_id,
+            analysis_id=analysis_id,
             file_id=request.file_id,
             file_path=file_path,
             case_json=case_json,
@@ -227,7 +175,6 @@ class AnalysisImageService:
         
         print(f"✅ 이미지 분석 완료: {result['status']}")
         
-        # 콜백 서비스에 분석 결과 등록 (SUMMARY용)
         from app.services.analysis_callback_service import AnalysisCallbackService
         AnalysisCallbackService.register_analysis_result(
             analysis_id=result["analysis_id"],

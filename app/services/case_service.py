@@ -17,7 +17,7 @@ def utc_now_iso() -> str:
 
 class CaseService:
     @staticmethod
-    def generate_case_summary(case_description: str) -> dict:
+    def generate_case_summary(case_description: str, occurred_at: str = "", location: str = "", case_type: str = "") -> dict:
         """
         사건 내용을 6가지 요소로 구조화
         AI.ipynb의 generate_case_summary() 함수 이식
@@ -30,10 +30,11 @@ class CaseService:
 2. object: 대상/객체 (예: 스마트폰, 현금, 귀금속)
 3. interaction: 상호작용 방식 (예: 물리적 접촉, 대면, 비대면, 협박)
 4. place: 장소 (예: 서울시 주택가 골목길)
-5. time: 시간 (예: 낮 시간대, 오후 2시경, 야간)
+5. time: 시간대 (구체적 날짜나 시각이 아닌 시간대로 표현. 예: 낮 시간대, 심야 시간대, 새벽 시간대, 야간)
 6. result: 결과 (예: 물품 탈취 성공, 도주, 미수)
 
-각 항목은 간결하게 핵심만 추출하십시오."""
+각 항목은 간결하게 핵심만 추출하십시오.
+time은 절대로 구체적 날짜나 시각(예: 2026-02-03, 오후 12시 10분)을 쓰지 마십시오. 반드시 "낮 시간대", "야간", "새벽 시간대" 등 시간대로만 표현하십시오."""
 
         schema = {
             "name": "case_summary",
@@ -51,12 +52,24 @@ class CaseService:
             }
         }
 
+        # 사건 전체 정보를 포함한 프롬프트 구성
+        user_content = f"사건 내용:\n{case_description}"
+        
+        if occurred_at:
+            user_content += f"\n\n발생 일시: {occurred_at}"
+        
+        if location:
+            user_content += f"\n발생 장소: {location}"
+        
+        if case_type:
+            user_content += f"\n사건 유형: {case_type}"
+
         try:
             response = client.chat.completions.create(
                 model=settings.OPENAI_MODEL,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"사건 내용:\n{case_description}"}
+                    {"role": "user", "content": user_content}
                 ],
                 temperature=0.3,
                 response_format={"type": "json_schema", "json_schema": schema}
@@ -82,8 +95,13 @@ class CaseService:
         CASE Summary 생성
         사건 내용을 받아 6가지 요소로 구조화된 summary 반환
         """
-        # Summary 생성
-        summary_dict = CaseService.generate_case_summary(request.description)
+        # Summary 생성 (전체 사건 정보 전달)
+        summary_dict = CaseService.generate_case_summary(
+            case_description=request.description,
+            occurred_at=request.occurred_at,
+            location=request.location,
+            case_type=request.type
+        )
         
         print("\n" + "=" * 70)
         print("📋 CASE Summary 생성 (API 명세서 준수)")

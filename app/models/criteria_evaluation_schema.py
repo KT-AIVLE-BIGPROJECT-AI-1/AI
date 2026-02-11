@@ -68,17 +68,15 @@ class AnalysisInfo(BaseModel):
 class CriteriaEvaluationRequest(BaseModel):
     case_detail: Optional[CaseDetail] = None
     analysis: Optional[AnalysisInfo] = None
-    legal_criteria: List[Any]  # LegalCriterionBasic 또는 LegalCriterionWithEvaluation
+    legal_criteria: List[Any]
     
     @field_validator('legal_criteria', mode='before')
     def validate_legal_criteria(cls, v):
-        """legal_criteria가 비어있지 않은지 확인"""
         if not v or len(v) == 0:
             raise ValueError("legal_criteria는 최소 1개 이상이어야 합니다")
         return v
     
     def model_post_init(self, __context):
-        """case_detail과 analysis 중 하나는 있어야 함"""
         if not self.case_detail and not self.analysis:
             raise ValueError("case_detail 또는 analysis 중 하나는 필수입니다")
 
