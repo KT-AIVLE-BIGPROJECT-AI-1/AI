@@ -1,4 +1,5 @@
 # app/services/report_interim_service.py
+# ✅ 공문서체 3인칭 과거 시제(~함, ~였음) 어투 프롬프트 적용
 
 import json
 from datetime import datetime
@@ -11,6 +12,26 @@ from app.models.report_interim_schema import (
 from app.services.report_storage_service import ReportStorageService
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+
+# ============================================================
+# 공통 문체 지시 (모든 보고서 서비스에서 사용)
+# ============================================================
+
+WRITING_STYLE_DIRECTIVE = """
+**[문체 규칙 — 반드시 준수]**
+1. 공문서체 3인칭 과거 시제로 작성할 것.
+   - 문장 끝: ~함, ~였음, ~하였음, ~됨, ~확인됨, ~판단됨
+   - 예시: "피의자는 ~한 사실이 확인됨", "수사관이 현장에 임장하여 ~을 확보하였음"
+   - 금지: ~합니다, ~입니다, ~했습니다, ~됩니다 (경어체 금지)
+   - 금지: ~한다, ~이다, ~했다 (평서체 금지)
+2. 객관적 사실과 증거 중심으로 서술할 것.
+   - 주관적 추측, 감정적 표현 배제
+   - "~한 것으로 보임", "~한 것으로 판단됨" 등 객관적 추정 표현 사용
+3. 전문 법률·수사 용어를 정확히 사용할 것.
+   - 피의자, 피해자, 참고인, 임의동행, 긴급체포, 현행범체포, 압수, 수색,
+     송치, 불송치, 기소, 불기소, 구성요건, 위법성, 책임성 등
+"""
 
 
 class ReportInterimService:
@@ -51,7 +72,14 @@ class ReportInterimService:
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "당신은 경찰 수사보고 작성 전문가입니다."},
+                    {
+                        "role": "system",
+                        "content": (
+                            "당신은 경찰 수사보고 작성 전문가입니다.\n"
+                            "모든 문장을 공문서체 3인칭 과거 시제(~함, ~였음, ~확인됨, ~판단됨)로 작성합니다.\n"
+                            "객관적 사실과 증거 중심으로 서술하며, 경어체(~합니다)나 평서체(~한다)는 사용하지 않습니다."
+                        )
+                    },
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3,
@@ -119,6 +147,8 @@ class ReportInterimService:
         
         prompt = f"""다음 수사 정보를 바탕으로 수사보고를 작성하십시오.
 
+{WRITING_STYLE_DIRECTIVE}
+
 **사건 정보:**
 제목: {request.case_detail.title}
 사건번호: {request.case_detail.case_id}
@@ -138,22 +168,26 @@ class ReportInterimService:
 {{
   "title": "수사보고",
   "content": {{
-    "case_overview": "사건의 기본 정보 (3-5문장)",
-    "investigation_progress": "시간순 수사 활동 내역 (5-7문장)",
+    "case_name": "{request.case_detail.title}",
+    "suspect": "피의자 정보 (파악된 경우 기재, 미상이면 '미상')",
+    "case_overview": "사건의 기본 정보와 경위를 서술형으로 기재 (3-5문장, ~함/~였음 어미 사용)",
+    "investigation_progress": "시간순 수사 활동 내역을 서술형으로 기재 (5-7문장, ~함/~였음 어미 사용)",
     "current_status": {{
-      "collected_evidence": "증거 목록 및 분석 결과",
-      "legal_review": "법리 쟁점 및 판단 기준 검토 상황",
+      "collected_evidence": "수집된 증거 목록 및 분석 결과를 서술형으로 기재",
+      "legal_review": "법리 쟁점 및 판단 기준 검토 상황을 서술형으로 기재",
       "progress_rate": "전체 수사 진행률 (예: 60%)"
     }},
-    "future_plan": "추가 수사 방향 및 예상 일정 (3-5문장)"
+    "future_plan": "추가 수사 방향 및 예상 일정을 서술형으로 기재 (3-5문장, ~함/~였음 어미 사용)"
   }}
 }}
 
 **작성 원칙:**
-- 객관적이고 명확한 서술
+- 공문서체 3인칭 과거 시제 (~함, ~였음, ~확인됨, ~판단됨)
+- 객관적 사실과 증거 중심으로 서술
 - 시간순 정리
 - 구체적인 수치와 일자 포함
-- 전문적인 용어 사용
+- 전문적인 법률·수사 용어 사용
+- 경어체(~합니다) 및 평서체(~한다) 절대 금지
 """
         
         return prompt

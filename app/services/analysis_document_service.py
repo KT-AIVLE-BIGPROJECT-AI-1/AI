@@ -1,4 +1,5 @@
 # app/services/analysis_document_service.py
+# ✅ temperature 0.0 적용 (증거와 사건과의 연관성을 객관적으로 수집)
 
 import uuid
 import openpyxl
@@ -197,10 +198,11 @@ def analyze_document_to_fixed_json(
     }
 
 
+# ✅ temperature 0.0 적용
 document_analyzer = DocumentAnalyzerV3(
     client=client,
     model="gpt-4o",
-    temperature=0.3,
+    temperature=0.0,
     chunk_size=3000
 )
 

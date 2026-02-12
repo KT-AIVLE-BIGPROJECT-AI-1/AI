@@ -1,4 +1,8 @@
 # app/services/investigation_file_service.py
+# ✅ 영상/음성 분석에 CASE 정보 전달 적용
+# ✅ 교차분석 콜백 페이로드 ID 체계 개편:
+#    CONTRADICTION → ct-N (statement_id_1, statement_id_2 → ks-N)
+#    QUESTION → q-N (contradiction_id → ct-N)
 
 import traceback
 import itertools
@@ -103,7 +107,8 @@ class InvestigationFileService:
                         case_id=case_id,
                         analysis_id=analysis_id,
                         origin_name=origin_name,
-                        presigned_url=presigned_url
+                        presigned_url=presigned_url,
+                        case_detail=case_detail_dict
                     )
 
                 elif file_type == "AUDIO":
@@ -111,7 +116,8 @@ class InvestigationFileService:
                         case_id=case_id,
                         analysis_id=analysis_id,
                         origin_name=origin_name,
-                        presigned_url=presigned_url
+                        presigned_url=presigned_url,
+                        case_detail=case_detail_dict
                     )
 
                 else:
@@ -124,7 +130,7 @@ class InvestigationFileService:
                 traceback.print_exc()
 
         # ============================================================
-        # ✅ (추가) AUDIO 파일 2개 이상이면 교차 모순 탐지 + 콜백 전송
+        # AUDIO 파일 2개 이상이면 교차 모순 탐지 + 콜백 전송
         # ============================================================
         try:
             InvestigationFileService._cross_audio_contradiction_analysis(case_id=case_id)
@@ -157,11 +163,11 @@ class InvestigationFileService:
 
         try:
             if file_type == "DOCUMENT":
-                print(f"   📄 문서 분석 중...")
+                print(f"   📄 문서 분석 중... (CASE 연관 분석)")
                 text = document_analyzer.extract(file_path)
                 summary_text = document_analyzer.analyze_one(text, case_detail, client)
             else:
-                print(f"   🖼️ 이미지 분석 중...")
+                print(f"   🖼️ 이미지 분석 중... (CASE 연관 분석)")
                 summary_text = image_analyzer.analyze_one(file_path, case_detail, client)
 
             keywords = extract_keywords(summary_text)
@@ -214,17 +220,25 @@ class InvestigationFileService:
         case_id: str,
         analysis_id: str,
         origin_name: str,
-        presigned_url: str
+        presigned_url: str,
+        case_detail: dict = None
     ):
-        """영상 분석 → VIDEO_EVENT 콜백"""
+        """영상 분석 → VIDEO_EVENT 콜백 + 프레임 저장"""
         from app.utils.file_downloader import download_from_presigned_url, cleanup_temp_file
         from app.services.analysis_media_service import video_analyzer
 
         file_path = download_from_presigned_url(presigned_url)
+        stored_frames = []  # 챗봇용 프레임 저장
 
         try:
-            print(f"   🎥 영상 분석 중...")
-            video_event = video_analyzer.analyze_video(file_path)
+            print(f"   🎥 영상 분석 중... (CASE 연관 분석)")
+            video_event = video_analyzer.analyze_video(file_path, case_json=case_detail)
+
+            # 프레임을 별도 추출하여 보관 (챗봇 Vision 질의용)
+            stored_frames = video_event.pop("frames", [])
+            if stored_frames:
+                print(f"   🖼️ {len(stored_frames)}개 프레임 저장 (챗봇 Vision 질의용)")
+
             result_data = [video_event]
         except Exception as e:
             print(f"   ❌ 영상 분석 오류: {e}")
@@ -235,7 +249,7 @@ class InvestigationFileService:
         finally:
             cleanup_temp_file(file_path)
 
-        # 콜백 전송
+        # 콜백 전송 (result_data에는 텍스트만, frames는 별도 필드)
         AnalysisCallbackService.register_analysis_result(
             analysis_id=analysis_id,
             result_data={
@@ -244,7 +258,8 @@ class InvestigationFileService:
                 "file_type": "VIDEO",
                 "origin_name": origin_name,
                 "status": "COMPLETED",
-                "result_data": result_data
+                "result_data": result_data,
+                "video_frames": stored_frames  # 챗봇용 프레임 (콜백에는 전송 안 됨)
             }
         )
 
@@ -257,7 +272,8 @@ class InvestigationFileService:
         case_id: str,
         analysis_id: str,
         origin_name: str,
-        presigned_url: str
+        presigned_url: str,
+        case_detail: dict = None
     ):
         """음성 분석 → TRANSCRIPT → KEY_STATEMENT → CONTRADICTION → QUESTION 콜백"""
         from app.utils.file_downloader import download_from_presigned_url, cleanup_temp_file
@@ -266,15 +282,15 @@ class InvestigationFileService:
         file_path = download_from_presigned_url(presigned_url)
 
         try:
-            print(f"   🎙️ 음성 분석 중...")
+            print(f"   🎙️ 음성 분석 중... (CASE 연관 분석)")
             stages, current_source = audio_analyzer.analyze_audio(
                 file_path,
-                previous_sources=AnalysisMediaService._audio_sources
+                previous_sources=AnalysisMediaService._audio_sources,
+                case_json=case_detail
             )
             AnalysisMediaService._audio_sources.append(current_source)
         except Exception as e:
             print(f"   ❌ 음성 분석 오류: {e}")
-            # ✅ TRANSCRIPT 에러 폴백도 직접 list 형태
             stages = [{
                 "stage": "TRANSCRIPT",
                 "payload": [{"temp_id": "err-1", "speaker": "시스템", "content": f"분석 실패: {str(e)}"}]
@@ -296,7 +312,8 @@ class InvestigationFileService:
         )
 
     # ============================================================
-    # ✅ (추가) 다중 AUDIO 교차 검증
+    # 다중 AUDIO 교차 검증
+    # ✅ 새 ID 체계: ct-N (statement_id_1/2), q-N (contradiction_id)
     # ============================================================
 
     @staticmethod
@@ -358,17 +375,41 @@ class InvestigationFileService:
         llm = OpenAI(api_key=settings.OPENAI_API_KEY)
 
         # ============================================================
-        # 2️⃣ LLM 모순 탐지 (새 구조: 쌍으로 생성)
+        # 2️⃣ LLM 모순 탐지 (새 ID 체계)
         # ============================================================
 
         seen_pairs = set()
+        # analysis_id별 교차 모순/질문 수집
         added_contradictions_by_aid: Dict[str, List[Dict[str, Any]]] = {}
         added_questions_by_aid: Dict[str, List[Dict[str, Any]]] = {}
 
-        # 전체 speaker_map 통합 (temp_id → speaker)
-        global_speaker_map = {}
+        # analysis_id별 기존 ct/q 개수 추적 (ID 채번용)
+        existing_ct_count_by_aid: Dict[str, int] = {}
+        existing_q_count_by_aid: Dict[str, int] = {}
+
         for item in audio_items:
-            global_speaker_map.update(item.get("speaker_map", {}))
+            aid = item["analysis_id"]
+            rd = AnalysisCallbackService._analysis_results.get(aid, {}).get("result_data", [])
+            ct_count = 0
+            q_count = 0
+            for stage_item in rd:
+                if isinstance(stage_item, dict):
+                    if stage_item.get("stage") == "CONTRADICTION":
+                        ct_count = len(stage_item.get("payload", []))
+                    if stage_item.get("stage") == "QUESTION":
+                        q_count = len(stage_item.get("payload", []))
+            existing_ct_count_by_aid[aid] = ct_count
+            existing_q_count_by_aid[aid] = q_count
+
+        # 전체 speaker_map 통합 (ks temp_id → speaker)
+        # KEY_STATEMENT의 transcript_id → TRANSCRIPT의 speaker
+        global_ks_speaker_map = {}
+        for item in audio_items:
+            sm = item.get("speaker_map", {})
+            for ks in item["key_statements"]:
+                tr_id = ks.get("transcript_id", "")
+                if tr_id and tr_id in sm:
+                    global_ks_speaker_map[ks["temp_id"]] = sm[tr_id]
 
         max_pair_checks = 800
         pair_checks = 0
@@ -389,7 +430,6 @@ class InvestigationFileService:
 
                     pair_key = tuple(sorted([f"{a_id}:{sa_temp}", f"{b_id}:{sb_temp}"]))
 
-                    # 🔥 이미 검사한 쌍이면 스킵
                     if pair_key in seen_pairs:
                         continue
 
@@ -415,13 +455,12 @@ class InvestigationFileService:
 
 모순이면:
 - type: TIME|LOCATION|ACTION|INTENT|CROSS_FILE
-- description_a: 진술 A 기준 모순 설명 (끝에 "(temp_id : {sb_temp})" 포함)
-- description_b: 진술 B 기준 모순 설명 (끝에 "(temp_id : {sa_temp})" 포함)
-- question_for_a_target: 진술 A의 상대방에게 할 질문
-- question_for_b_target: 진술 B의 상대방에게 할 질문
+- description: 두 진술이 어떻게 모순되는지 설명
+- question_for_a: 진술 A 관련자에게 할 질문
+- question_for_b: 진술 B 관련자에게 할 질문
 - rationale: 질문 근거
 
-모순이 아니면 빈 JSON 반환
+모순이 아니면 is_contradiction: false만 반환
 
 진술 A ({sa_temp}):
 {sa_content}
@@ -433,10 +472,9 @@ class InvestigationFileService:
 {{
   "is_contradiction": true/false,
   "type": "...",
-  "description_a": "...",
-  "description_b": "...",
-  "question_for_a_target": "...",
-  "question_for_b_target": "...",
+  "description": "...",
+  "question_for_a": "...",
+  "question_for_b": "...",
   "rationale": "..."
 }}
 """
@@ -457,44 +495,76 @@ class InvestigationFileService:
                             continue
 
                         c_type = result.get("type", "CROSS_FILE")
+                        description = result.get("description", "")
 
-                        # 모순 쌍 생성
-                        contra_a = {
-                            "temp_id": sa_temp,
-                            "description": result.get("description_a", ""),
-                            "type": c_type
-                        }
-                        contra_b = {
-                            "temp_id": sb_temp,
-                            "description": result.get("description_b", ""),
-                            "type": c_type
-                        }
+                        # ── CONTRADICTION 생성 (새 ID 체계) ──
+                        # 양쪽 analysis_id 모두에 동일한 모순 항목 추가
+                        for aid in [a_id, b_id]:
+                            ct_next = existing_ct_count_by_aid.get(aid, 0) + len(added_contradictions_by_aid.get(aid, [])) + 1
+                            # ct prefix 결정: 해당 파일의 기존 prefix 확인
+                            rd = AnalysisCallbackService._analysis_results.get(aid, {}).get("result_data", [])
+                            ct_prefix = "ct"
+                            for stage_item in rd:
+                                if isinstance(stage_item, dict) and stage_item.get("stage") == "CONTRADICTION":
+                                    existing_payload = stage_item.get("payload", [])
+                                    if existing_payload and existing_payload[0].get("temp_id"):
+                                        # 기존 prefix 추출 (예: "ct-1" → "ct", "ctB-1" → "ctB")
+                                        existing_id = existing_payload[0]["temp_id"]
+                                        ct_prefix = existing_id.rsplit("-", 1)[0]
+                                        break
 
-                        added_contradictions_by_aid.setdefault(a_id, []).append(contra_a)
-                        added_contradictions_by_aid.setdefault(b_id, []).append(contra_b)
+                            ct_id = f"{ct_prefix}-{ct_next}"
 
-                        # 질문 생성 (target = 상대방)
-                        sa_speaker = global_speaker_map.get(sa_temp, "미상")
-                        sb_speaker = global_speaker_map.get(sb_temp, "미상")
-                        rationale = result.get("rationale", "교차 모순 확인 필요")
+                            contra = {
+                                "temp_id": ct_id,
+                                "statement_id_1": sa_temp,
+                                "statement_id_2": sb_temp,
+                                "description": description,
+                                "type": c_type
+                            }
+                            added_contradictions_by_aid.setdefault(aid, []).append(contra)
 
-                        # sa의 질문 → target은 sb_speaker (상대방)
-                        q_a = {
-                            "temp_id": sa_temp,
-                            "target": sb_speaker,
-                            "question": result.get("question_for_a_target", ""),
-                            "rationale": rationale
-                        }
-                        # sb의 질문 → target은 sa_speaker (상대방)
-                        q_b = {
-                            "temp_id": sb_temp,
-                            "target": sa_speaker,
-                            "question": result.get("question_for_b_target", ""),
-                            "rationale": rationale
-                        }
+                            # ── QUESTION 생성 (새 ID 체계) ──
+                            sa_speaker = global_ks_speaker_map.get(sa_temp, "미상")
+                            sb_speaker = global_ks_speaker_map.get(sb_temp, "미상")
+                            rationale = result.get("rationale", "교차 모순 확인 필요")
 
-                        added_questions_by_aid.setdefault(a_id, []).append(q_a)
-                        added_questions_by_aid.setdefault(b_id, []).append(q_b)
+                            q_prefix = "q"
+                            for stage_item in rd:
+                                if isinstance(stage_item, dict) and stage_item.get("stage") == "QUESTION":
+                                    existing_payload = stage_item.get("payload", [])
+                                    if existing_payload and existing_payload[0].get("temp_id"):
+                                        existing_id = existing_payload[0]["temp_id"]
+                                        q_prefix = existing_id.rsplit("-", 1)[0]
+                                        break
+
+                            q_base = existing_q_count_by_aid.get(aid, 0) + len(added_questions_by_aid.get(aid, []))
+
+                            # 진술A 관련자에게 질문
+                            question_a = result.get("question_for_a", "")
+                            if question_a:
+                                q_next = q_base + 1
+                                added_questions_by_aid.setdefault(aid, []).append({
+                                    "temp_id": f"{q_prefix}-{q_next}",
+                                    "contradiction_id": ct_id,
+                                    "target": sa_speaker,
+                                    "question": question_a,
+                                    "rationale": rationale
+                                })
+
+                            # 진술B 관련자에게 질문
+                            question_b = result.get("question_for_b", "")
+                            if question_b:
+                                q_next = q_base + len(added_questions_by_aid.get(aid, [])) - (0 if not question_a else 0) + 1
+                                # 재계산: 현재까지 추가된 수
+                                q_next = existing_q_count_by_aid.get(aid, 0) + len(added_questions_by_aid.get(aid, []))  + 1
+                                added_questions_by_aid.setdefault(aid, []).append({
+                                    "temp_id": f"{q_prefix}-{q_next}",
+                                    "contradiction_id": ct_id,
+                                    "target": sb_speaker,
+                                    "question": question_b,
+                                    "rationale": rationale
+                                })
 
                     except Exception:
                         continue
@@ -534,16 +604,18 @@ class InvestigationFileService:
                 if item.get("stage") == "QUESTION":
                     existing_qs = item.get("payload", [])
 
-            # 🔥 중복 제거 (temp_id + description 조합)
-            existing_contra_keys = {
-                (c.get("temp_id"), c.get("description", "")[:50])
-                for c in existing_contras
-            }
+            # 중복 제거 (statement_id_1 + statement_id_2 조합)
+            existing_contra_keys = set()
+            for c in existing_contras:
+                key = tuple(sorted([c.get("statement_id_1", ""), c.get("statement_id_2", "")]))
+                existing_contra_keys.add(key)
 
-            filtered_contras = [
-                c for c in new_contras
-                if (c.get("temp_id"), c.get("description", "")[:50]) not in existing_contra_keys
-            ]
+            filtered_contras = []
+            for c in new_contras:
+                key = tuple(sorted([c.get("statement_id_1", ""), c.get("statement_id_2", "")]))
+                if key not in existing_contra_keys:
+                    filtered_contras.append(c)
+                    existing_contra_keys.add(key)
 
             if filtered_contras:
                 for item in rd:
