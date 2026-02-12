@@ -1,5 +1,6 @@
 # app/services/analysis_media_service.py
 # 영상/음성 분석 엔진 (내부 전용 - investigation_file_service에서 호출)
+# TRANSCRIPT → KEY_STATEMENT → CONTRADICTION → QUESTION 연결 구조 반영
 
 import json
 import re
@@ -38,6 +39,7 @@ class VideoAnalyzer:
 - 각 이벤트의 시작/종료 시간을 최대한 정확히 추정
 - 추정, 단정 금지
 - 최소 1개 이상의 이벤트 감지
+- 이벤트가 1개뿐이라도 반드시 JSON 배열로 출력
 
 **출력 형식 (JSON 배열만 출력):**
 [
@@ -172,11 +174,13 @@ class AudioAnalyzer:
 - 모든 발화를 빠짐없이 포함할 것
 - 원문의 내용을 변경하거나 생략하지 말 것
 - 발화 순서를 반드시 유지할 것
+- 각 발화에 temp_id를 순서대로 부여: {prefix}-1, {prefix}-2, ...
+- 발화가 1개뿐이라도 반드시 JSON 배열로 출력
 
 **출력 형식 (JSON 배열만 출력):**
 [
-  {{"speaker": "수사관", "content": "발화 내용"}},
-  {{"speaker": "피의자 김루팡", "content": "발화 내용"}}
+  {{"temp_id": "{prefix}-1", "speaker": "수사관", "content": "발화 내용"}},
+  {{"temp_id": "{prefix}-2", "speaker": "피의자 김루팡", "content": "발화 내용"}}
 ]
 
 **전사 원문:**
@@ -198,15 +202,23 @@ class AudioAnalyzer:
 
 **규칙:**
 - 3~10개 추출
-- 각 진술에 고유 temp_id 부여: {prefix}-1, {prefix}-2, ...
-- 원문을 최대한 유지하되 핵심만 발췌
+- 각 핵심 진술의 temp_id는 반드시 원본 전사(TRANSCRIPT)의 temp_id를 그대로 사용
+- statement_text에는 원본 전사 문장을 그대로 복사
+- content에는 해당 진술의 수사적 의미/설명을 작성
 - 단순 인적사항, 절차적 안내는 제외
+- 결과가 1개뿐이라도 반드시 JSON 배열로 출력
 
 **전사 내용 [{source_label}]:**
 {transcript}
 
 **출력 형식 (JSON 배열만 출력):**
-[{{"temp_id": "{prefix}-1", "content": "핵심 진술 내용"}}]
+[
+  {{
+    "temp_id": "전사의 temp_id를 그대로 사용",
+    "statement_text": "원본 전사 문장 그대로",
+    "content": "이 진술의 수사적 의미/설명"
+  }}
+]
 """
 
     CONTRADICTION_PROMPT = """당신은 수사 전문 분석관입니다.
@@ -224,6 +236,10 @@ class AudioAnalyzer:
 **규칙:**
 - 모순이 없으면 빈 배열 [] 반환
 - 명확한 모순만 추출
+- 모순은 반드시 **쌍**으로 생성: A와 B가 모순이면 A 기준 1개, B 기준 1개 → 총 2개
+- 각 항목의 temp_id는 핵심 진술의 temp_id를 사용
+- description 끝에 반드시 상대 temp_id를 "(temp_id : xx)" 형식으로 포함
+- 결과가 1쌍(2개)뿐이라도 반드시 JSON 배열로 출력
 
 **전사 내용:**
 {transcript}
@@ -232,7 +248,10 @@ class AudioAnalyzer:
 {key_statements}
 
 **출력 형식 (JSON 배열만 출력):**
-[{{"statement_temp_id": "ks-1", "description": "모순 내용 설명", "type": "TIME"}}]
+[
+  {{"temp_id": "tr-1", "description": "진술자 A는 ...라고 주장하나 진술자 B는 ...라고 진술하여 모순됨 (temp_id : tr-3)", "type": "CROSS_STATEMENT"}},
+  {{"temp_id": "tr-3", "description": "진술자 B는 ...라고 진술하나 진술자 A는 ...라고 주장하여 모순됨 (temp_id : tr-1)", "type": "CROSS_STATEMENT"}}
+]
 """
 
     CROSS_CONTRADICTION_PROMPT = """당신은 수사 전문 분석관입니다.
@@ -252,20 +271,32 @@ class AudioAnalyzer:
 
 **규칙:**
 - 모순이 없으면 빈 배열 [] 반환
-- CROSS_FILE 모순 시 양쪽 statement_temp_id를 모두 명시
+- 모순은 반드시 **쌍**으로 생성: A와 B가 모순이면 A 기준 1개, B 기준 1개 → 총 2개
+- 각 항목의 temp_id는 핵심 진술의 temp_id를 사용
+- description 끝에 반드시 상대 temp_id를 "(temp_id : xx)" 형식으로 포함
+- 결과가 1쌍(2개)뿐이라도 반드시 JSON 배열로 출력
 
 {all_transcripts}
 
 **출력 형식 (JSON 배열만 출력):**
-[{{"statement_temp_id": "ks-A-1", "counter_statement_temp_id": "ks-B-2", "description": "모순 내용", "type": "CROSS_FILE"}}]
+[
+  {{"temp_id": "ks-A-1", "description": "진술자 A는 ...라고 주장하나 진술자 B는 ...라고 진술하여 모순됨 (temp_id : ks-B-2)", "type": "CROSS_FILE"}},
+  {{"temp_id": "ks-B-2", "description": "진술자 B는 ...라고 진술하나 진술자 A는 ...라고 주장하여 모순됨 (temp_id : ks-A-1)", "type": "CROSS_FILE"}}
+]
 """
 
     QUESTION_PROMPT = """당신은 수사 전문 분석관입니다.
 
 아래는 전사 내용, 핵심 진술, 모순점입니다.
-추가 수사를 위한 **질문 전략**을 생성하십시오.
+모순점에 대해 추가 수사를 위한 **질문 전략**을 생성하십시오.
 
-**규칙:** 3~8개 생성
+**규칙:**
+- 모순이 있는 temp_id당 질문 3개씩 생성
+- temp_id는 모순점(CONTRADICTION)의 temp_id를 사용
+- target은 해당 temp_id의 발화자가 **아닌** 상대방으로 지정
+- rationale에 질문의 근거를 반드시 포함
+- 모순이 없으면 빈 배열 [] 반환
+- 결과가 1개뿐이라도 반드시 JSON 배열로 출력
 
 **전사 내용:**
 {transcript}
@@ -277,7 +308,9 @@ class AudioAnalyzer:
 {contradictions}
 
 **출력 형식 (JSON 배열만 출력):**
-[{{"statement_temp_id": "ks-1", "question": "질문 내용"}}]
+[
+  {{"temp_id": "tr-1", "target": "상대방 이름", "question": "질문 내용", "rationale": "질문 근거"}}
+]
 """
 
     CROSS_QUESTION_PROMPT = """당신은 수사 전문 분석관입니다.
@@ -290,7 +323,12 @@ class AudioAnalyzer:
 - **파일 간 교차 모순을 검증하는 질문** (가장 중요)
 - 진술자 A의 주장을 진술자 B에게 확인하는 질문
 
-**규칙:** 5~12개 생성, 교차 모순 관련 질문은 대상 진술자를 명시
+**규칙:**
+- 모순이 있는 temp_id당 질문 3개씩 생성
+- temp_id는 모순점(CONTRADICTION)의 temp_id를 사용
+- target은 해당 temp_id의 발화자가 **아닌** 상대방으로 지정
+- rationale에 질문의 근거를 반드시 포함
+- 결과가 1개뿐이라도 반드시 JSON 배열로 출력
 
 {all_transcripts}
 
@@ -298,7 +336,9 @@ class AudioAnalyzer:
 {contradictions}
 
 **출력 형식 (JSON 배열만 출력):**
-[{{"statement_temp_id": "ks-A-1", "target": "진술자", "question": "질문 내용"}}]
+[
+  {{"temp_id": "ks-A-1", "target": "상대방 이름", "question": "질문 내용", "rationale": "질문 근거"}}
+]
 """
 
     def __init__(self, client, model: str = "gpt-4o"):
@@ -315,9 +355,12 @@ class AudioAnalyzer:
         return response.choices[0].message.content.strip()
 
     def _parse_json(self, text: str) -> Any:
+        """JSON 파싱 + 항상 list 반환 보장"""
         text = re.sub(r"```json|```", "", text).strip()
         result = json.loads(text)
-        return result if isinstance(result, list) else [result]
+        if not isinstance(result, list):
+            result = [result]
+        return result
 
     # STEP 1: Whisper 전사
     def transcribe(self, audio_path: Path) -> str:
@@ -330,19 +373,25 @@ class AudioAnalyzer:
         print(f"   ✅ 전사 완료: {len(transcript)}자")
         return transcript
 
-    # STEP 2: 발화자 분리
-    def diarize(self, raw_transcript: str) -> List[Dict]:
+    # STEP 2: 발화자 분리 (temp_id 포함)
+    def diarize(self, raw_transcript: str, prefix: str = "tr") -> List[Dict]:
         print(f"   👥 발화자 분리 중...")
-        prompt = self.DIARIZE_PROMPT.format(transcript=raw_transcript)
+        prompt = self.DIARIZE_PROMPT.format(transcript=raw_transcript, prefix=prefix)
         result_text = self._call_gpt(prompt)
         try:
             dialogues = self._parse_json(result_text)
-            validated = [{"speaker": str(d.get("speaker", "미상")), "content": str(d.get("content", ""))} for d in dialogues]
+            validated = []
+            for i, d in enumerate(dialogues, 1):
+                validated.append({
+                    "temp_id": str(d.get("temp_id", f"{prefix}-{i}")),
+                    "speaker": str(d.get("speaker", "미상")),
+                    "content": str(d.get("content", ""))
+                })
             print(f"   ✅ 발화자 분리 완료: {len(validated)}개 발화")
             return validated
         except json.JSONDecodeError as e:
             print(f"   ⚠️ 발화자 분리 파싱 실패: {e}")
-            return [{"speaker": "미상", "content": raw_transcript}]
+            return [{"temp_id": f"{prefix}-1", "speaker": "미상", "content": raw_transcript}]
 
     # 주요 진술자 식별
     def _get_main_speaker(self, dialogues: List[Dict]) -> str:
@@ -354,11 +403,35 @@ class AudioAnalyzer:
         return max(speakers, key=speakers.get) if speakers else "미상"
 
     # STEP 3: 핵심 진술 추출
-    def extract_key_statements(self, diarized_text: str, prefix: str = "ks", source_label: str = "음성") -> List[Dict]:
+    def extract_key_statements(self, diarized_text: str, transcript_items: List[Dict], source_label: str = "음성") -> List[Dict]:
+        """
+        핵심 진술 추출
+        - temp_id는 TRANSCRIPT의 temp_id를 그대로 사용
+        - statement_text에 원본 전사 문장 포함
+        """
         print(f"   🔑 핵심 진술 추출 중... [{source_label}]")
-        prompt = self.KEY_STATEMENT_PROMPT.format(transcript=diarized_text, prefix=prefix, source_label=source_label)
+
+        # 전사 내용에 temp_id 정보를 포함하여 프롬프트 생성
+        transcript_with_ids = "\n".join(
+            f"[{item['temp_id']}] [{item['speaker']}] {item['content']}"
+            for item in transcript_items
+        )
+
+        prompt = self.KEY_STATEMENT_PROMPT.format(
+            transcript=transcript_with_ids,
+            source_label=source_label
+        )
         try:
-            return self._parse_json(self._call_gpt(prompt, max_tokens=2000))
+            results = self._parse_json(self._call_gpt(prompt, max_tokens=2000))
+            # 유효성 검증: 필수 필드 보장
+            validated = []
+            for item in results:
+                validated.append({
+                    "temp_id": str(item.get("temp_id", "")),
+                    "statement_text": str(item.get("statement_text", "")),
+                    "content": str(item.get("content", ""))
+                })
+            return validated
         except json.JSONDecodeError as e:
             print(f"   ⚠️ 핵심 진술 파싱 실패: {e}")
             return []
@@ -369,7 +442,16 @@ class AudioAnalyzer:
         ks_text = json.dumps(key_statements, ensure_ascii=False, indent=2)
         prompt = self.CONTRADICTION_PROMPT.format(transcript=diarized_text, key_statements=ks_text)
         try:
-            return self._parse_json(self._call_gpt(prompt, max_tokens=2000))
+            results = self._parse_json(self._call_gpt(prompt, max_tokens=2000))
+            # 유효성 검증
+            validated = []
+            for item in results:
+                validated.append({
+                    "temp_id": str(item.get("temp_id", "")),
+                    "description": str(item.get("description", "")),
+                    "type": str(item.get("type", "CONTENT"))
+                })
+            return validated
         except json.JSONDecodeError:
             return []
 
@@ -386,7 +468,15 @@ class AudioAnalyzer:
         all_transcripts = "\n\n---\n\n".join(sections)
         prompt = self.CROSS_CONTRADICTION_PROMPT.format(all_transcripts=all_transcripts)
         try:
-            return self._parse_json(self._call_gpt(prompt, max_tokens=3000))
+            results = self._parse_json(self._call_gpt(prompt, max_tokens=3000))
+            validated = []
+            for item in results:
+                validated.append({
+                    "temp_id": str(item.get("temp_id", "")),
+                    "description": str(item.get("description", "")),
+                    "type": str(item.get("type", "CROSS_FILE"))
+                })
+            return validated
         except json.JSONDecodeError:
             return []
 
@@ -399,7 +489,16 @@ class AudioAnalyzer:
             contradictions=json.dumps(contradictions, ensure_ascii=False, indent=2)
         )
         try:
-            return self._parse_json(self._call_gpt(prompt, max_tokens=2000, temperature=0.3))
+            results = self._parse_json(self._call_gpt(prompt, max_tokens=2000, temperature=0.3))
+            validated = []
+            for item in results:
+                validated.append({
+                    "temp_id": str(item.get("temp_id", "")),
+                    "target": str(item.get("target", "")),
+                    "question": str(item.get("question", "")),
+                    "rationale": str(item.get("rationale", ""))
+                })
+            return validated
         except json.JSONDecodeError:
             return []
 
@@ -418,7 +517,16 @@ class AudioAnalyzer:
             contradictions=json.dumps(contradictions, ensure_ascii=False, indent=2)
         )
         try:
-            return self._parse_json(self._call_gpt(prompt, max_tokens=3000, temperature=0.3))
+            results = self._parse_json(self._call_gpt(prompt, max_tokens=3000, temperature=0.3))
+            validated = []
+            for item in results:
+                validated.append({
+                    "temp_id": str(item.get("temp_id", "")),
+                    "target": str(item.get("target", "")),
+                    "question": str(item.get("question", "")),
+                    "rationale": str(item.get("rationale", ""))
+                })
+            return validated
         except json.JSONDecodeError:
             return []
 
@@ -431,12 +539,19 @@ class AudioAnalyzer:
         source_label = audio_path.stem
 
         raw_transcript = self.transcribe(audio_path)
-        dialogues = self.diarize(raw_transcript)
+        dialogues = self.diarize(raw_transcript, prefix=prefix)
         speaker = self._get_main_speaker(dialogues)
         print(f"   👤 주요 진술자: {speaker}")
 
-        diarized_text = "\n".join(f"[{d['speaker']}] {d['content']}" for d in dialogues)
-        key_statements = self.extract_key_statements(diarized_text, prefix=prefix, source_label=source_label)
+        # temp_id 포함된 전사 텍스트 생성
+        diarized_text = "\n".join(
+            f"[{d['temp_id']}] [{d['speaker']}] {d['content']}"
+            for d in dialogues
+        )
+
+        key_statements = self.extract_key_statements(
+            diarized_text, transcript_items=dialogues, source_label=source_label
+        )
 
         current_source = {
             "label": source_label, "prefix": prefix, "speaker": speaker,
@@ -454,8 +569,9 @@ class AudioAnalyzer:
 
         print(f"\n   📊 분석 결과: 발화 {len(dialogues)}개 / 핵심진술 {len(key_statements)}개 / 모순 {len(contradictions)}개 / 질문 {len(questions)}개")
 
+        # ✅ TRANSCRIPT payload: 직접 list (content 감싸기 제거)
         stages = [
-            {"stage": "TRANSCRIPT", "payload": {"content": dialogues}},
+            {"stage": "TRANSCRIPT", "payload": dialogues},
             {"stage": "KEY_STATEMENT", "payload": key_statements},
             {"stage": "CONTRADICTION", "payload": contradictions},
             {"stage": "QUESTION", "payload": questions}

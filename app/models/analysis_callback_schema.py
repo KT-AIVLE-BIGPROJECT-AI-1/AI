@@ -1,12 +1,12 @@
 # app/models/analysis_callback_schema.py
-# camelCase → snake_case 전면 변경 (#18)
+# TRANSCRIPT → KEY_STATEMENT → CONTRADICTION → QUESTION 연결 구조 반영
 
 from pydantic import BaseModel, Field
 from typing import List, Optional, Union, Any
 
 
 # ============================================================
-# Payload 스키마 (snake_case)
+# Payload 스키마
 # ============================================================
 
 class SummaryPayload(BaseModel):
@@ -15,26 +15,29 @@ class SummaryPayload(BaseModel):
     keywords: List[str]
 
 
-class TranscriptPayload(BaseModel):
-    content: Any  # str 또는 List[{"speaker": ..., "content": ...}]
-
-
-class KeyStatement(BaseModel):
+class TranscriptItem(BaseModel):
     temp_id: str
+    speaker: str
     content: str
 
 
+class KeyStatement(BaseModel):
+    temp_id: str  # TRANSCRIPT의 temp_id와 동일 (연결)
+    statement_text: str  # 원본 전사 문장 (TRANSCRIPT.content)
+    content: str  # 핵심 진술 설명 (description)
+
+
 class Contradiction(BaseModel):
-    statement_temp_id: str
-    counter_statement_temp_id: Optional[str] = None
-    description: str
+    temp_id: str  # KEY_STATEMENT의 temp_id (연결)
+    description: str  # 모순 설명 + 끝에 "(temp_id : xx)" 포함
     type: str  # TIME, LOCATION, CONTENT, BEHAVIOR, CROSS_STATEMENT, CROSS_FILE
 
 
 class Question(BaseModel):
-    statement_temp_id: str
-    target: Optional[str] = None
-    question: str
+    temp_id: str  # CONTRADICTION의 temp_id (연결)
+    target: str  # 질문 대상 (temp_id 발화자가 아닌 상대방)
+    question: str  # 질문 내용
+    rationale: str  # 질문 근거
 
 
 class VideoEvent(BaseModel):
@@ -55,7 +58,7 @@ class AnalysisCallbackRequest(BaseModel):
     )
     payload: Union[
         SummaryPayload,
-        TranscriptPayload,
+        List[TranscriptItem],
         List[KeyStatement],
         List[Contradiction],
         List[Question],

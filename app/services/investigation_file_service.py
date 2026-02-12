@@ -3,6 +3,7 @@
 import traceback
 import itertools
 import json
+import re
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Tuple
 
@@ -273,9 +274,10 @@ class InvestigationFileService:
             AnalysisMediaService._audio_sources.append(current_source)
         except Exception as e:
             print(f"   ❌ 음성 분석 오류: {e}")
+            # ✅ TRANSCRIPT 에러 폴백도 직접 list 형태
             stages = [{
                 "stage": "TRANSCRIPT",
-                "payload": {"content": [{"speaker": "시스템", "content": f"분석 실패: {str(e)}"}]}
+                "payload": [{"temp_id": "err-1", "speaker": "시스템", "content": f"분석 실패: {str(e)}"}]
             }]
         finally:
             cleanup_temp_file(file_path)
@@ -311,7 +313,7 @@ class InvestigationFileService:
         audio_items: List[Dict[str, Any]] = []
 
         # ============================================================
-        # 1️⃣ AUDIO + KEY_STATEMENT 수집
+        # 1️⃣ AUDIO + KEY_STATEMENT + TRANSCRIPT(발화자 맵) 수집
         # ============================================================
         for analysis_id, data in AnalysisCallbackService._analysis_results.items():
 
@@ -326,18 +328,25 @@ class InvestigationFileService:
                 continue
 
             key_statements = []
+            speaker_map = {}  # temp_id → speaker 매핑
 
             for item in rd:
                 if isinstance(item, dict) and item.get("stage") == "KEY_STATEMENT":
                     key_statements = item.get("payload", [])
-                    break
+                if isinstance(item, dict) and item.get("stage") == "TRANSCRIPT":
+                    transcript_payload = item.get("payload", [])
+                    if isinstance(transcript_payload, list):
+                        for t in transcript_payload:
+                            if isinstance(t, dict) and t.get("temp_id"):
+                                speaker_map[t["temp_id"]] = t.get("speaker", "미상")
 
             if not key_statements:
                 continue
 
             audio_items.append({
                 "analysis_id": analysis_id,
-                "key_statements": key_statements
+                "key_statements": key_statements,
+                "speaker_map": speaker_map
             })
 
         if len(audio_items) < 2:
@@ -349,12 +358,17 @@ class InvestigationFileService:
         llm = OpenAI(api_key=settings.OPENAI_API_KEY)
 
         # ============================================================
-        # 2️⃣ LLM 모순 탐지 (중복 방지 구조)
+        # 2️⃣ LLM 모순 탐지 (새 구조: 쌍으로 생성)
         # ============================================================
 
         seen_pairs = set()
         added_contradictions_by_aid: Dict[str, List[Dict[str, Any]]] = {}
         added_questions_by_aid: Dict[str, List[Dict[str, Any]]] = {}
+
+        # 전체 speaker_map 통합 (temp_id → speaker)
+        global_speaker_map = {}
+        for item in audio_items:
+            global_speaker_map.update(item.get("speaker_map", {}))
 
         max_pair_checks = 800
         pair_checks = 0
@@ -386,6 +400,9 @@ class InvestigationFileService:
                         print("⚠️ 교차 비교 상한 도달 → 중단")
                         break
 
+                    sa_content = sa.get("content", sa.get("statement_text", ""))
+                    sb_content = sb.get("content", sb.get("statement_text", ""))
+
                     prompt = f"""
 아래 두 진술이 논리적으로 충돌하는지 판단하세요.
 
@@ -397,24 +414,30 @@ class InvestigationFileService:
 - 공모 여부 충돌
 
 모순이면:
-- type: TIME|LOCATION|ACTION|INTENT|OTHER
-- description: 1문장 설명
-- question: 추가 확인 질문 1개
+- type: TIME|LOCATION|ACTION|INTENT|CROSS_FILE
+- description_a: 진술 A 기준 모순 설명 (끝에 "(temp_id : {sb_temp})" 포함)
+- description_b: 진술 B 기준 모순 설명 (끝에 "(temp_id : {sa_temp})" 포함)
+- question_for_a_target: 진술 A의 상대방에게 할 질문
+- question_for_b_target: 진술 B의 상대방에게 할 질문
+- rationale: 질문 근거
 
 모순이 아니면 빈 JSON 반환
 
-진술 A:
-{sa.get("content")}
+진술 A ({sa_temp}):
+{sa_content}
 
-진술 B:
-{sb.get("content")}
+진술 B ({sb_temp}):
+{sb_content}
 
 반드시 JSON만:
 {{
   "is_contradiction": true/false,
   "type": "...",
-  "description": "...",
-  "question": "..."
+  "description_a": "...",
+  "description_b": "...",
+  "question_for_a_target": "...",
+  "question_for_b_target": "...",
+  "rationale": "..."
 }}
 """
 
@@ -426,37 +449,52 @@ class InvestigationFileService:
                         )
 
                         raw = resp.choices[0].message.content.strip()
+                        raw = re.sub(r"```json|```", "", raw).strip() if "```" in raw else raw
 
                         result = json.loads(raw)
 
                         if not result.get("is_contradiction"):
                             continue
 
-                        contradiction_obj = {
-                            "statement_temp_id": f"{a_id}:{sa_temp}",
-                            "related_statement_id": f"{b_id}:{sb_temp}",
-                            "description": result.get("description"),
-                            "type": result.get("type", "OTHER")
+                        c_type = result.get("type", "CROSS_FILE")
+
+                        # 모순 쌍 생성
+                        contra_a = {
+                            "temp_id": sa_temp,
+                            "description": result.get("description_a", ""),
+                            "type": c_type
+                        }
+                        contra_b = {
+                            "temp_id": sb_temp,
+                            "description": result.get("description_b", ""),
+                            "type": c_type
                         }
 
-                        question_obj = {
-                            "statement_temp_id": f"{a_id}:{sa_temp}",
-                            "question": result.get("question")
+                        added_contradictions_by_aid.setdefault(a_id, []).append(contra_a)
+                        added_contradictions_by_aid.setdefault(b_id, []).append(contra_b)
+
+                        # 질문 생성 (target = 상대방)
+                        sa_speaker = global_speaker_map.get(sa_temp, "미상")
+                        sb_speaker = global_speaker_map.get(sb_temp, "미상")
+                        rationale = result.get("rationale", "교차 모순 확인 필요")
+
+                        # sa의 질문 → target은 sb_speaker (상대방)
+                        q_a = {
+                            "temp_id": sa_temp,
+                            "target": sb_speaker,
+                            "question": result.get("question_for_a_target", ""),
+                            "rationale": rationale
+                        }
+                        # sb의 질문 → target은 sa_speaker (상대방)
+                        q_b = {
+                            "temp_id": sb_temp,
+                            "target": sa_speaker,
+                            "question": result.get("question_for_b_target", ""),
+                            "rationale": rationale
                         }
 
-                        added_contradictions_by_aid.setdefault(a_id, []).append(contradiction_obj)
-                        added_contradictions_by_aid.setdefault(b_id, []).append({
-                            "statement_temp_id": f"{b_id}:{sb_temp}",
-                            "related_statement_id": f"{a_id}:{sa_temp}",
-                            "description": result.get("description"),
-                            "type": result.get("type", "OTHER")
-                        })
-
-                        added_questions_by_aid.setdefault(a_id, []).append(question_obj)
-                        added_questions_by_aid.setdefault(b_id, []).append({
-                            "statement_temp_id": f"{b_id}:{sb_temp}",
-                            "question": f"상대 진술({a_id}:{sa_temp})과 상충합니다. 설명해주시겠습니까?"
-                        })
+                        added_questions_by_aid.setdefault(a_id, []).append(q_a)
+                        added_questions_by_aid.setdefault(b_id, []).append(q_b)
 
                     except Exception:
                         continue
@@ -496,15 +534,15 @@ class InvestigationFileService:
                 if item.get("stage") == "QUESTION":
                     existing_qs = item.get("payload", [])
 
-            # 🔥 중복 제거
-            existing_ids = {
-                (c.get("statement_temp_id"), c.get("related_statement_id"))
+            # 🔥 중복 제거 (temp_id + description 조합)
+            existing_contra_keys = {
+                (c.get("temp_id"), c.get("description", "")[:50])
                 for c in existing_contras
             }
 
             filtered_contras = [
                 c for c in new_contras
-                if (c.get("statement_temp_id"), c.get("related_statement_id")) not in existing_ids
+                if (c.get("temp_id"), c.get("description", "")[:50]) not in existing_contra_keys
             ]
 
             if filtered_contras:
