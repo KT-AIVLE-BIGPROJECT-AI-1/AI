@@ -1,6 +1,5 @@
 # app/services/analysis_service.py
 # 문서/이미지 분석 엔진 (내부 전용 - investigation_file_service에서 호출)
-# ✅ temperature 0.0 적용 (증거와 사건과의 연관성을 객관적으로 수집)
 
 import base64
 import openpyxl
@@ -289,7 +288,6 @@ def extract_keywords(text: str, client_instance=None) -> List[str]:
 
 # ============================================================
 # Analyzer 인스턴스 (investigation_file_service에서 import하여 사용)
-# ✅ temperature 0.0 적용
 # ============================================================
 
 document_analyzer = DocumentAnalyzerV3(

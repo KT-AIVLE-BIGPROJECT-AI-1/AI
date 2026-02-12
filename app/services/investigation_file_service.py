@@ -129,6 +129,62 @@ class InvestigationFileService:
                 print(f"   ❌ 분석 실패: {origin_name} - {e}")
                 traceback.print_exc()
 
+                # 🔥 실패 시에도 반드시 콜백 전송 (백엔드가 PENDING 상태로 무한 대기하지 않도록)
+                try:
+                    # file_type별 기본 stage 결정
+                    if file_type in ("DOCUMENT", "IMAGE"):
+                        fail_result_data = {
+                            "stage": "SUMMARY",
+                            "payload": {
+                                "summary": f"분석 실패: {str(e)}",
+                                "confidence": 0.0,
+                                "keywords": []
+                            }
+                        }
+                    elif file_type == "VIDEO":
+                        fail_result_data = [{
+                            "stage": "VIDEO_EVENT",
+                            "payload": [{
+                                "start_time": 0.0,
+                                "end_time": 0.0,
+                                "event_type": "OTHER",
+                                "event_description": f"분석 실패: {str(e)}"
+                            }]
+                        }]
+                    elif file_type == "AUDIO":
+                        fail_result_data = [{
+                            "stage": "TRANSCRIPT",
+                            "payload": [{
+                                "temp_id": "err-1",
+                                "speaker": "시스템",
+                                "content": f"분석 실패: {str(e)}"
+                            }]
+                        }]
+                    else:
+                        fail_result_data = {
+                            "stage": "SUMMARY",
+                            "payload": {
+                                "summary": f"지원하지 않는 파일 유형({file_type}) 분석 실패: {str(e)}",
+                                "confidence": 0.0,
+                                "keywords": []
+                            }
+                        }
+
+                    AnalysisCallbackService.register_analysis_result(
+                        analysis_id=analysis_id,
+                        result_data={
+                            "case_id": case_id,
+                            "analysis_id": analysis_id,
+                            "file_type": file_type,
+                            "origin_name": origin_name,
+                            "status": "FAILED",
+                            "result_data": fail_result_data
+                        }
+                    )
+                    print(f"   📤 실패 콜백 전송 완료: {origin_name}")
+                except Exception as cb_err:
+                    print(f"   ⚠️ 실패 콜백 전송도 실패: {cb_err}")
+
         # ============================================================
         # AUDIO 파일 2개 이상이면 교차 모순 탐지 + 콜백 전송
         # ============================================================

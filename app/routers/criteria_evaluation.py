@@ -7,10 +7,10 @@ from app.models.criteria_evaluation_schema import (
 )
 from app.services.criteria_evaluation_service import CriteriaEvaluationService
 
-router = APIRouter(prefix="/criteria-evaluation", tags=["Criteria Evaluation"])
+router = APIRouter(prefix="/legal-criteria", tags=["Criteria Evaluation"])
 
 
-@router.post("", response_model=CriteriaEvaluationResponse)
+@router.post("/evaluate", response_model=CriteriaEvaluationResponse)
 async def evaluate_criteria(request: CriteriaEvaluationRequest):
     """
     법리 판단 기준 충족 평가
