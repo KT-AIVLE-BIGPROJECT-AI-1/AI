@@ -17,7 +17,7 @@ class CriteriaEvaluationService:
 
     두 가지 모드:
     1. case_detail만 있음: 증거 없이 초기 평가 → 항상 INSUFFICIENT
-    2. analysis만 있음: 증거 기반 재평가 → MET/NOT_MET/INSUFFICIENT
+    2. analysis만 있음: 증거 기반 재평가 → SATISFIED/NOT_SATISFIED/INSUFFICIENT
     """
 
     @staticmethod
@@ -124,13 +124,13 @@ class CriteriaEvaluationService:
 {result_data_str}
 
 **평가 규칙:**
-1. 증거가 판단 기준을 완전히 충족하면 → status: "MET"
-2. 증거가 판단 기준에 반하면 → status: "NOT_MET"
+1. 증거가 판단 기준을 완전히 충족하면 → status: "SATISFIED"
+2. 증거가 판단 기준에 반하면 → status: "NOT_SATISFIED"
 3. 증거가 불충분하면 → status: "INSUFFICIENT"
 
 **출력 형식 (JSON만 출력):**
 {{
-  "status": "INSUFFICIENT|MET|NOT_MET",
+  "status": "INSUFFICIENT|SATISFIED|NOT_SATISFIED",
   "reason": "평가 이유 (2-3문장)",
   "evidence_gap": "부족한 증거 (INSUFFICIENT일 때만, 그 외는 빈 문자열)"
 }}

@@ -24,11 +24,11 @@ async def evaluate_criteria(request: CriteriaEvaluationRequest):
     
     **모드 2: ANALYSIS 있음**
     - 입력: analysis + legal_criteria
-    - 출력: INSUFFICIENT | MET | NOT_MET
+    - 출력: INSUFFICIENT | SATISFIED | NOT_SATISFIED
     - 사용: 증거 분석 후 종합 평가
     
     **응답:**
-    - status: INSUFFICIENT (불충분) | MET (충족) | NOT_MET (미충족)
+    - status: INSUFFICIENT (불충분) | SATISFIED (충족) | NOT_SATISFIED (미충족)
     - reason: 평가 이유
     - evidence_gap: 부족한 증거 (INSUFFICIENT일 때만)
     """

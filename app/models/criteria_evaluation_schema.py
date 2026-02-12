@@ -75,6 +75,6 @@ class CriteriaEvaluationRequest(BaseModel):
 
 
 class CriteriaEvaluationResponse(BaseModel):
-    status: str = Field(..., description="INSUFFICIENT|MET|NOT_MET")
+    status: str = Field(..., description="INSUFFICIENT|SATISFIED|NOT_SATISFIED")
     reason: str
     evidence_gap: str

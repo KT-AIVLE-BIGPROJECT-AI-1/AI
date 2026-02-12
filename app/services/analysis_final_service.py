@@ -51,8 +51,8 @@ def generate_final_analysis(
             all_evaluations.append(eval_data)
     
     total_criteria = len(all_evaluations)
-    satisfied_count = sum(1 for e in all_evaluations if e.get('status') == 'MET')
-    not_satisfied_count = sum(1 for e in all_evaluations if e.get('status') == 'NOT_MET')
+    satisfied_count = sum(1 for e in all_evaluations if e.get('status') == 'SATISFIED')
+    not_satisfied_count = sum(1 for e in all_evaluations if e.get('status') == 'NOT_SATISFIED')
     insufficient_count = sum(1 for e in all_evaluations if e.get('status') == 'INSUFFICIENT')
     
     # 법리 쟁점 추출
@@ -64,7 +64,7 @@ def generate_final_analysis(
             legal_issues[issue_name] = legal_issue.get('related_law', '')
     
     print(f"   ✅ 증거: {total_evidence}건 ({dict(evidence_by_type)})")
-    print(f"   ✅ 법리 기준: {total_criteria}건 (MET:{satisfied_count} / NOT_MET:{not_satisfied_count} / INSUFFICIENT:{insufficient_count})")
+    print(f"   ✅ 법리 기준: {total_criteria}건 (SATISFIED:{satisfied_count} / NOT_SATISFIED:{not_satisfied_count} / INSUFFICIENT:{insufficient_count})")
     print(f"   ✅ 법리 쟁점: {len(legal_issues)}개")
     
     # ============================================================
@@ -188,8 +188,8 @@ def generate_final_analysis(
     legal_evaluation_summary = f"""
 [법리 기준 평가]
 - 총 평가 기준: {total_criteria}건
-- 충족 (MET): {satisfied_count}건
-- 불충족 (NOT_MET): {not_satisfied_count}건
+- 충족 (SATISFIED): {satisfied_count}건
+- 불충족 (NOT_SATISFIED): {not_satisfied_count}건
 - 불충분 (INSUFFICIENT): {insufficient_count}건
 """
     
@@ -237,8 +237,8 @@ def generate_final_analysis(
    - SUSPENSION: 보류 (추가 수사 필요)
    
    판단 기준:
-   - MET가 대부분 → TRANSFER
-   - NOT_MET가 대부분 → NON_TRANSFER
+   - SATISFIED가 대부분 → TRANSFER
+   - NOT_SATISFIED가 대부분 → NON_TRANSFER
    - INSUFFICIENT가 많음 → SUSPENSION
 
 2. **decision_summary**: 송치 의견에 대한 종합 요약 (200-300자)

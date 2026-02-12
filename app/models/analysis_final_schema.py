@@ -34,7 +34,7 @@ class LegalIssueInfo(BaseModel):
 
 class CriteriaEvaluationInfo(BaseModel):
     analysis_id: Optional[str] = None
-    status: str = Field(..., description="MET|NOT_MET|INSUFFICIENT")
+    status: str = Field(..., description="SATISFIED|NOT_SATISFIED|INSUFFICIENT")
     reason: str = ""
     evidence_gap: str = ""
 
