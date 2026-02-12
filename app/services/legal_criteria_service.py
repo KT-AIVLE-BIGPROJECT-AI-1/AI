@@ -203,7 +203,7 @@ JSON만 출력:
             for prec in precedent_results[:3]:
                 precedents_metadata.append({
                     "precedent_case_no": prec["precedent_id"],
-                    "precedent_decision_date": prec["decision_date"]
+                    "precedent_decision_date": prec["decision_date"].replace(".", "-")
                 })
             
             print(f"   ✅ {len(precedents_metadata)}개 판례 메타데이터 수집 완료")
