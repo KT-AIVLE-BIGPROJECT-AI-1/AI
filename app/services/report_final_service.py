@@ -75,6 +75,7 @@ class ReportFinalService:
             )
             
             result_text = response.choices[0].message.content.strip()
+            print("[DEBUG]", result_text)
             
             # JSON 파싱
             import re
@@ -123,7 +124,6 @@ class ReportFinalService:
             "SUSPENSION": "수사중지"
         }
         decision_kr = decision_map.get(
-            request.final_analysis.recommended_decision,
             request.final_analysis.recommended_decision
         )
         
@@ -138,7 +138,6 @@ class ReportFinalService:
 **사건 정보:**
 사건번호: {request.case_detail.case_id}
 사건명: {request.case_detail.title}
-담당자: {request.case_detail.assignee_user_id}
 사건유형: {request.case_detail.type}
 사건상태: {request.case_detail.status}
 발생일시: {request.case_detail.occurred_at}
@@ -155,7 +154,7 @@ class ReportFinalService:
 {request.final_analysis.decision_summary}
 
 법리 판단 요약:
-{request.final_analysis.legal_issue_summary}
+{request.final_analysis.legal_issues_summary}
 
 증거 충분성 요약:
 {request.final_analysis.evidence_sufficiency_summary}

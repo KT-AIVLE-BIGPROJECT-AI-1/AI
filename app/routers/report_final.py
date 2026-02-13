@@ -55,6 +55,7 @@ async def generate_final_report(request: ReportFinalRequest):
     
     **송치의견:** TRANSFER(송치) | NON_TRANSFER(불송치) | SUSPENSION(수사중지)
     """
+    print(request)
     try:
         response = ReportFinalService.generate_final_report(request)
         return response

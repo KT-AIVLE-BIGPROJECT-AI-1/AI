@@ -34,6 +34,7 @@ async def generate_final_analysis(request: AnalysisFinalRequest):
     }
     ```
     """
+    print(request)
     try:
         response = AnalysisFinalService.generate_final_analysis(request)
         return response
