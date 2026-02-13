@@ -128,6 +128,11 @@ async def lifespan(app: FastAPI):
     print("🚀 FastAPI 서버 시작")
     print("=" * 70)
     initialize_embeddings()
+
+    # ✅ 저장된 분석 결과 복원 (챗봇 서버 재시작 대응)
+    from app.services.analysis_callback_service import AnalysisCallbackService
+    AnalysisCallbackService.load_from_disk()
+
     print("\n" + "=" * 70)
     print("✅ 모든 초기화 완료")
     print("=" * 70)
