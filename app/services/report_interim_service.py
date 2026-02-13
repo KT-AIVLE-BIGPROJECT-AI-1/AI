@@ -152,7 +152,6 @@ class ReportInterimService:
 **사건 정보:**
 제목: {request.case_detail.title}
 사건번호: {request.case_detail.case_id}
-담당자: {request.case_detail.assignee_user_id}
 사건유형: {request.case_detail.type}
 발생일시: {request.case_detail.occurred_at}
 발생장소: {request.case_detail.location}
