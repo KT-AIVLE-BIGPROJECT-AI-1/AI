@@ -347,7 +347,7 @@ class ReportDecisionService:
 {request.final_analysis.decision_summary}
 
 법리 판단 요약:
-{request.final_analysis.legal_issue_summary}
+{request.final_analysis.legal_issues_summary}
 
 증거 충분성 요약:
 {request.final_analysis.evidence_sufficiency_summary}

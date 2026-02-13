@@ -29,7 +29,7 @@ class FinalAnalysis(BaseModel):
     case_id: str
     recommended_decision: str = Field(..., description="TRANSFER|NON_TRANSFER|SUSPENSION")
     decision_summary: str
-    legal_issue_summary: str
+    legal_issues_summary: str
     evidence_sufficiency_summary: str
     remaining_risk_summary: str
     created_at: str
