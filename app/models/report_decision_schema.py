@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any
 class CaseSummary(BaseModel):
     action: Optional[str] = Field(None)
     object: Optional[str] = Field(None)
+    interaction: Optional[str] = Field(None)
     place: Optional[str] = Field(None)
     time: Optional[str] = Field(None)
     result: Optional[str] = Field(None)
@@ -20,8 +21,6 @@ class CaseDetail(BaseModel):
     status: str
     occurred_at: str
     location: str
-    created_at: str
-    updated_at: str
 
 
 class FinalAnalysis(BaseModel):
