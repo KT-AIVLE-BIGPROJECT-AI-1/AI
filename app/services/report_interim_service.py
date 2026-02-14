@@ -173,8 +173,7 @@ class ReportInterimService:
     "investigation_progress": "시간순 수사 활동 내역을 서술형으로 기재 (5-7문장, ~함/~였음 어미 사용)",
     "current_status": {{
       "collected_evidence": "수집된 증거 목록 및 분석 결과를 서술형으로 기재",
-      "legal_review": "법리 쟁점 및 판단 기준 검토 상황을 서술형으로 기재",
-      "progress_rate": "전체 수사 진행률 (예: 60%)"
+      "legal_review": "법리 쟁점 및 판단 기준 검토 상황을 서술형으로 기재"
     }},
     "future_plan": "추가 수사 방향 및 예상 일정을 서술형으로 기재 (3-5문장, ~함/~였음 어미 사용)"
   }}
