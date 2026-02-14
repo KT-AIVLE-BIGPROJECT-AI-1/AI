@@ -48,7 +48,6 @@ class ReportInterimResponse(BaseModel):
         - current_status: 현재 상황 (object)
             - collected_evidence: 확보 증거
             - legal_review: 법리 검토
-            - progress_rate: 진행률
         - future_plan: 향후 계획 (string)
         """
     )
