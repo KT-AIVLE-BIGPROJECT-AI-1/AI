@@ -53,8 +53,8 @@ class ReportDecisionResponse(BaseModel):
             - occurred_at: 발생일시
             - location: 발생장소
             - case_details: 사건경위
-        - judgment_reason: 판단 이유 (object)
-            - key_judgment: 핵심 판단
+        - judgement_reason: 판단 이유 (object)
+            - key_judgement: 핵심 판단
             - detailed_reason: 세부 사유
             - change_reason: 판단 변경 사유 (AI 추천과 다를 경우)
         - evidence_evaluation: 증거 평가 (object)
@@ -64,7 +64,7 @@ class ReportDecisionResponse(BaseModel):
         - legal_review: 법리 검토 (object)
             - applicable_law: 적용 법조
             - elements: 구성요건
-            - legal_judgment: 법리 판단
+            - overall_judgement: 법리 판단
         - conclusion: 결론 (object)
             - final_opinion: 최종 의견
             - follow_up: 조치사항

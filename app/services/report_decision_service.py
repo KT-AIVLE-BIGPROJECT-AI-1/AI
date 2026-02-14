@@ -246,7 +246,7 @@ class ReportDecisionService:
       "case_details": "피의사실을 일시·장소·방법·결과를 특정하여 구체적으로 서술 (5-7문장, ~함/~였음)"
     }},
     
-    "judgment_reason": {{
+    "judgement_reason": {{
       "investigation_progress": "수사 경과를 시간순으로 서술 (~함/~였음)",
       "suspension_reason": "수사중지의 구체적 사유를 명시하여 서술 (~함/~였음)",
       "legal_basis": "수사중지의 법적 근거를 명시 (관련 규칙·조항 등)",
@@ -262,7 +262,7 @@ class ReportDecisionService:
     "legal_review": {{
       "applicable_law": "관련 법률 조항을 조문 단위로 명시",
       "elements": "구성요건 충족 여부 검토 결과를 서술 (~함/~였음)",
-      "legal_judgment": "법적 판단 근거 및 결론을 서술 (~함/~였음)"
+      "overall_judgement": "법적 판단 근거 및 결론을 서술 (~함/~였음)"
     }},
     
     "conclusion": {{
@@ -290,8 +290,8 @@ class ReportDecisionService:
       "case_details": "범죄사실을 일시·장소·방법·결과를 특정하여 구체적으로 서술 (5-7문장, ~함/~였음)"
     }},
     
-    "judgment_reason": {{
-      "key_judgment": "{user_decision_kr} 결정의 핵심 근거를 서술 (3-5문장, ~함/~였음)",
+    "judgement_reason": {{
+      "key_judgement": "{user_decision_kr} 결정의 핵심 근거를 서술 (3-5문장, ~함/~였음)",
       "detailed_reason": "범죄사실과 증거를 종합한 구체적 판단 이유를 서술 (7-10문장, ~함/~였음)",
       {'"change_reason": "AI 추천과 다른 이유를 구체적으로 서술 (~함/~였음)"' if is_different else ''}
     }},
@@ -305,7 +305,7 @@ class ReportDecisionService:
     "legal_review": {{
       "applicable_law": "적용 법조를 조문 단위로 명시 (예: 형법 제257조 제1항)",
       "elements": "각 구성요건(객관적·주관적 구성요건)별 충족 여부를 구체적으로 검토 (~함/~였음)",
-      "legal_judgment": "위법성·책임성 판단을 포함한 법적 판단 근거 및 결론을 서술 (~함/~였음)"
+      "legal_judgement": "위법성·책임성 판단을 포함한 법적 판단 근거 및 결론을 서술 (~함/~였음)"
     }},
     
     "conclusion": {{

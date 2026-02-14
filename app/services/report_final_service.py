@@ -184,12 +184,12 @@ class ReportFinalService:
     "legal_review": {{
       "applicable_law": "적용 법조를 조문 단위로 명시 (예: 형법 제257조 제1항 등)",
       "elements": "각 구성요건(객관적 구성요건, 주관적 구성요건)별 충족 여부를 구체적으로 검토하여 서술 (~함/~였음)",
-      "overall_judgment": "위법성·책임성 판단을 포함한 법리 검토 결과를 서술 (~함/~였음)"
+      "overall_judgement": "위법성·책임성 판단을 포함한 법리 검토 결과를 서술 (~함/~였음)"
     }},
     
     "transfer_opinion": {{
       "opinion": "{decision_kr}",
-      "judgment_basis": "증거와 법리에 근거한 {decision_kr} 판단 이유를 구체적으로 서술 (5-7문장, ~함/~였음)",
+      "judgement_basis": "증거와 법리에 근거한 {decision_kr} 판단 이유를 구체적으로 서술 (5-7문장, ~함/~였음)",
       "remaining_risk": "잔여 리스크 또는 유의사항을 서술 (~함/~였음)"
     }},
     

@@ -59,10 +59,10 @@ class ReportFinalResponse(BaseModel):
         - legal_review: 법리 검토 (object)
             - applicable_law: 적용 법조
             - elements: 구성요건
-            - overall_judgment: 종합 판단
+            - overall_judgement: 종합 판단
         - transfer_opinion: 송치 의견 (object)
             - opinion: 의견
-            - judgment_basis: 판단 근거
+            - judgement_basis: 판단 근거
             - remaining_risk: 잔여 리스크
         - special_notes: 특이사항
         """
