@@ -128,6 +128,11 @@ class CriteriaEvaluationService:
 2. 증거가 판단 기준에 반하면 → status: "NOT_SATISFIED"
 3. 증거가 불충분하면 → status: "INSUFFICIENT"
 
+**[환각 방지 규칙]**
+- 제공된 증거 분석 결과에 없는 사실을 절대로 생성하지 마십시오.
+- 증거에서 확인할 수 없는 내용을 추측하여 판단하지 마십시오.
+- 입력 데이터만을 근거로 평가하십시오.
+
 **출력 형식 (JSON만 출력):**
 {{
   "status": "INSUFFICIENT|SATISFIED|NOT_SATISFIED",
@@ -138,9 +143,9 @@ class CriteriaEvaluationService:
 
         try:
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.3
+                temperature=0.0
             )
 
             result_text = response.choices[0].message.content.strip()

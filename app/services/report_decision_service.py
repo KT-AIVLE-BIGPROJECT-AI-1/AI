@@ -39,6 +39,9 @@ WRITING_STYLE_DIRECTIVE = """
    - 주관적 추측, 감정적 표현 배제
    - "~한 것으로 보임", "~한 것으로 판단됨" 등 객관적 추정 표현 사용
 3. 전문 법률·수사 용어를 정확히 사용할 것.
+4. **[환각 방지]** 입력된 사건 정보와 분석 결과에 없는 내용을 절대로 생성하지 마십시오.
+   - 제공된 데이터에서 확인할 수 없는 증거, 인물, 사실을 추가하지 말 것
+   - 추측이나 가정에 의한 내용 서술 금지
 """
 
 
@@ -117,7 +120,7 @@ class ReportDecisionService:
         # GPT-4o로 결정서 생성
         try:
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1",
                 messages=[
                     {
                         "role": "system",
@@ -131,7 +134,7 @@ class ReportDecisionService:
                     },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3,
+                temperature=0.0,
                 max_tokens=3000
             )
             
@@ -235,10 +238,10 @@ class ReportDecisionService:
   "title": "수사중지 결정서",
   "content": {{
     "case_name": "{request.case_detail.title}",
-    "suspect": "피의자 정보 (파악된 경우 기재, 미상이면 '미상')",
+    "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
     "charge": "죄명 (적용 법조 기반으로 기재)",
     
-    "ruling": "수사중지 결정함",
+    "ruling": "피의자에 대하여 수사중지 결정함 (구체적 사유를 포함하여 서술)",
     
     "case_overview": {{
       "occurred_at": "{request.case_detail.occurred_at}",
@@ -278,11 +281,11 @@ class ReportDecisionService:
   "title": "{user_decision_kr} 결정서",
   "content": {{
     "case_name": "{request.case_detail.title}",
-    "suspect": "피의자 정보 (파악된 경우 기재, 미상이면 '미상')",
+    "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
     "criminal_record": "범죄경력자료 및 수사경력자료 (확인된 경우 기재, 미확인 시 '해당 없음')",
     "charge": "죄명 (적용 법조 기반으로 기재)",
     
-    "ruling": "{user_decision_kr} 결정함",
+    "ruling": "피의자에 대하여 (사유를 포함하여) {user_decision_kr} 결정함 (예: '증거불충분으로 혐의없음 판단되어 불송치 결정함', '범죄사실이 인정되어 송치 결정함' 등)",
     
     "case_overview": {{
       "occurred_at": "{request.case_detail.occurred_at}",

@@ -83,6 +83,8 @@ class VideoAnalyzer:
 - 추정, 단정 금지
 - 최소 1개 이상의 이벤트 감지
 - 이벤트가 1개뿐이라도 반드시 JSON 배열로 출력
+- 프레임에 보이지 않는 내용을 절대로 생성하지 마십시오
+- 사건 정보에 없는 행위나 인물을 추측하여 추가하지 마십시오
 
 **출력 형식 (JSON 배열만 출력):**
 [
@@ -292,6 +294,7 @@ class AudioAnalyzer:
 - statement_text에는 원본 전사 문장을 그대로 복사
 - content에는 해당 진술의 수사적 의미/설명을 작성 (사건과의 연관성 포함)
 - 단순 인적사항, 절차적 안내는 제외
+- 전사 내용에 없는 진술을 절대로 생성하지 마십시오
 - 결과가 1개뿐이라도 반드시 JSON 배열로 출력
 
 **전사 내용 [{source_label}]:**
@@ -332,6 +335,7 @@ class AudioAnalyzer:
 **규칙:**
 - 모순이 없으면 빈 배열 [] 반환
 - 명확한 모순만 추출
+- 진술에 없는 내용을 근거로 모순을 생성하지 마십시오
 - 하나의 모순은 하나의 항목으로 생성
 - temp_id는 {ct_prefix}-1, {ct_prefix}-2, ... 순서대로 부여 (CONTRADICTION의 고유 ID)
 - statement_id_1과 statement_id_2에 모순되는 두 핵심 진술의 temp_id를 기입 (KEY_STATEMENT 참조)
@@ -381,6 +385,7 @@ class AudioAnalyzer:
 **규칙:**
 - 모순이 없으면 빈 배열 [] 반환
 - 하나의 모순은 하나의 항목으로 생성
+- 진술에 없는 내용을 근거로 모순을 생성하지 마십시오
 - temp_id는 {ct_prefix}-1, {ct_prefix}-2, ... 순서대로 부여
 - statement_id_1과 statement_id_2에 모순되는 두 핵심 진술의 temp_id를 기입
   (서로 다른 파일의 핵심 진술 temp_id를 교차 참조)
@@ -421,6 +426,7 @@ class AudioAnalyzer:
 - contradiction_id는 해당 질문이 관련된 모순(CONTRADICTION)의 temp_id를 기입
 - target은 질문 대상자 이름 (모순을 해소하기 위해 질문해야 할 사람)
 - rationale에 질문의 근거를 반드시 포함
+- 진술 내용에 없는 사실을 근거로 질문을 생성하지 마십시오
 - 모순이 없으면 빈 배열 [] 반환
 - 결과가 1개뿐이라도 반드시 JSON 배열로 출력
 
@@ -468,6 +474,7 @@ class AudioAnalyzer:
 - contradiction_id는 해당 질문이 관련된 모순(CONTRADICTION)의 temp_id를 기입
 - target은 질문 대상자 이름
 - rationale에 질문의 근거를 반드시 포함
+- 진술 내용에 없는 사실을 근거로 질문을 생성하지 마십시오
 - 결과가 1개뿐이라도 반드시 JSON 배열로 출력
 
 {all_transcripts}
@@ -814,8 +821,8 @@ class AudioAnalyzer:
 # Analyzer 인스턴스
 # ============================================================
 
-video_analyzer = VideoAnalyzer(client=client, model="gpt-4o")
-audio_analyzer = AudioAnalyzer(client=client, model="gpt-4o")
+video_analyzer = VideoAnalyzer(client=client, model="gpt-4.1")
+audio_analyzer = AudioAnalyzer(client=client, model="gpt-4.1")
 
 
 # ============================================================

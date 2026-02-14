@@ -217,6 +217,11 @@ def generate_final_analysis(
     prompt = f"""당신은 형사 사건 분석 전문가입니다. 
 아래 모든 정보를 종합하여 **최종 송치 의견**을 작성하십시오.
 
+**[환각 방지 규칙]**
+- 아래 제공된 사건 정보, 증거, 법리 평가 데이터에 없는 내용을 절대로 생성하지 마십시오.
+- 제공된 데이터만을 근거로 판단하고, 추측이나 가정에 의한 내용 추가를 금지합니다.
+- 증거에서 확인할 수 없는 사실은 언급하지 마십시오.
+
 {case_info}
 
 {evidence_summary}
@@ -293,9 +298,9 @@ JSON만 출력:
 
     try:
         response = openai_client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4.1",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
+            temperature=0.0,
             response_format={"type": "json_object"}
         )
         

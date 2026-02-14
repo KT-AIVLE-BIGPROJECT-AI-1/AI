@@ -31,6 +31,9 @@ WRITING_STYLE_DIRECTIVE = """
 3. 전문 법률·수사 용어를 정확히 사용할 것.
    - 피의자, 피해자, 참고인, 임의동행, 긴급체포, 현행범체포, 압수, 수색,
      송치, 불송치, 기소, 불기소, 구성요건, 위법성, 책임성 등
+4. **[환각 방지]** 입력된 사건 정보와 활동 로그에 없는 내용을 절대로 생성하지 마십시오.
+   - 제공된 데이터에서 확인할 수 없는 증거, 인물, 사실을 추가하지 말 것
+   - 추측이나 가정에 의한 내용 서술 금지
 """
 
 
@@ -70,7 +73,7 @@ class ReportInterimService:
         # GPT-4o로 보고서 생성
         try:
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1",
                 messages=[
                     {
                         "role": "system",
@@ -82,7 +85,7 @@ class ReportInterimService:
                     },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3,
+                temperature=0.0,
                 max_tokens=2000
             )
             

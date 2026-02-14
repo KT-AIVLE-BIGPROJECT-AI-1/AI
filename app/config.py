@@ -30,8 +30,9 @@ class Settings(BaseSettings):
     REPORTS_DIR: Path = APP_DIR / "reports"  # 생성된 파일은 app 내부 유지
 
     # AI 모델 설정
-    OPENAI_MODEL: str = "gpt-4o-mini"
-    OPENAI_VISION_MODEL: str = "gpt-4o"
+    OPENAI_MODEL: str = "gpt-4.1"
+    OPENAI_VISION_MODEL: str = "gpt-4.1"
+    OPENAI_TEMPERATURE: float = 0.0
     GEMINI_MODEL: str = "gemini-1.5-pro"
 
     # 임베딩 설정

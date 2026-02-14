@@ -44,7 +44,7 @@ class DocumentAnalyzerV3:
 절대 규칙:
 - 문서에 명시된 모든 구체적 정보를 빠짐없이 포함할 것
 - 숫자, 날짜, 이름, 주소 등은 정확히 그대로 기록
-- 문서에 없는 사실 추가 금지
+- 문서에 없는 사실 추가 금지 (절대로 생성하지 마십시오)
 - 추정, 해석, 판단, 법적 평가 금지
 - 사건 개요에 없는 내용을 새로 만들지 말 것
 - 목록/번호 사용 금지
@@ -189,7 +189,7 @@ class ImageAnalyzerV2:
 절대 규칙:
 - 사진에 보이는 모든 구체적 정보를 빠짐없이 포함할 것
 - 색상, 위치, 크기 등은 가능한 구체적으로 기술
-- 사진에 보이지 않는 내용 추가 금지
+- 사진에 보이지 않는 내용 추가 금지 (절대로 생성하지 마십시오)
 - 사건 개요에 없는 내용을 새로 만들지 말 것
 - 추정, 단정, 법적 판단 금지
 - 미학적 묘사 금지
@@ -291,9 +291,9 @@ def extract_keywords(text: str, client_instance=None) -> List[str]:
 # ============================================================
 
 document_analyzer = DocumentAnalyzerV3(
-    client=client, model="gpt-4o", temperature=0.0, chunk_size=3000
+    client=client, model="gpt-4.1", temperature=0.0, chunk_size=3000
 )
 
 image_analyzer = ImageAnalyzerV2(
-    client=client, model="gpt-4o"
+    client=client, model="gpt-4.1"
 )

@@ -188,11 +188,15 @@ class InvestigationFileService:
         # ============================================================
         # AUDIO 파일 2개 이상이면 교차 모순 탐지 + 콜백 전송
         # ============================================================
-        try:
-            InvestigationFileService._cross_audio_contradiction_analysis(case_id=case_id)
-        except Exception as e:
-            print(f"   ⚠️ 음성 교차 검증 실패(무시): {e}")
-            traceback.print_exc()
+        audio_count = sum(1 for f in request.investigation_files if f.file_type.upper() == "AUDIO")
+        if audio_count >= 2:
+            try:
+                InvestigationFileService._cross_audio_contradiction_analysis(case_id=case_id)
+            except Exception as e:
+                print(f"   ⚠️ 음성 교차 검증 실패(무시): {e}")
+                traceback.print_exc()
+        else:
+            print(f"🔎 다중 음성 교차 검증: AUDIO {audio_count}개 미만 → 스킵")
 
         print("\n" + "=" * 70)
         print("🏁 백그라운드 분석 파이프라인 완료")
@@ -502,6 +506,10 @@ class InvestigationFileService:
                     prompt = f"""
 아래 두 진술이 논리적으로 충돌하는지 판단하세요.
 
+**[환각 방지 규칙]**
+- 두 진술의 내용에 없는 사실을 절대로 생성하지 마십시오.
+- 진술에서 확인할 수 없는 내용을 추측하여 모순으로 판단하지 마십시오.
+
 판단 기준:
 - 시간 불일치
 - 장소 불일치
@@ -537,7 +545,7 @@ class InvestigationFileService:
 
                     try:
                         resp = llm.chat.completions.create(
-                            model="gpt-4o",
+                            model="gpt-4.1",
                             messages=[{"role": "user", "content": prompt}],
                             temperature=0
                         )
