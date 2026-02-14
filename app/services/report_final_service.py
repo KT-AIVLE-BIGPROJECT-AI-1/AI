@@ -170,7 +170,7 @@ class ReportFinalService:
   "title": "수사결과보고",
   "content": {{
     "case_name": "{request.case_detail.title}",
-    "suspect": "피의자 정보 (파악된 경우 기재, 미상이면 '미상')",
+    "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
     "criminal_record": "범죄경력자료 및 수사경력자료 (확인된 경우 기재, 미확인 시 '해당 없음')",
     
     "case_overview": {{

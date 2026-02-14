@@ -171,7 +171,7 @@ class ReportInterimService:
   "title": "수사보고",
   "content": {{
     "case_name": "{request.case_detail.title}",
-    "suspect": "피의자 정보 (파악된 경우 기재, 미상이면 '미상')",
+    "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
     "case_overview": "사건의 기본 정보와 경위를 서술형으로 기재 (3-5문장, ~함/~였음 어미 사용)",
     "investigation_progress": "시간순 수사 활동 내역을 서술형으로 기재 (5-7문장, ~함/~였음 어미 사용)",
     "current_status": {{
