@@ -124,9 +124,11 @@ class CriteriaEvaluationService:
 {result_data_str}
 
 **평가 규칙:**
-1. 증거가 판단 기준을 완전히 충족하면 → status: "SATISFIED"
-2. 증거가 판단 기준에 반하면 → status: "NOT_SATISFIED"
-3. 증거가 불충분하면 → status: "INSUFFICIENT"
+1. 증거가 판단 기준을 충족하는 방향으로 뒷받침하면 → status: "SATISFIED"
+2. 증거가 판단 기준에 반하거나 충족하지 못하는 방향이면 → status: "NOT_SATISFIED"
+3. 이 증거 자료의 내용이 해당 판단 기준과 전혀 관련이 없어 판단 자체가 불가능한 경우에만 → status: "INSUFFICIENT"
+
+**주의:** 증거가 존재하고 해당 기준과 관련된 내용을 포함하고 있다면, 반드시 SATISFIED 또는 NOT_SATISFIED 중 하나로 판단하십시오. INSUFFICIENT는 오직 증거 내용이 해당 기준과 아무런 관련이 없을 때만 사용합니다.
 
 **[환각 방지 규칙]**
 - 제공된 증거 분석 결과에 없는 사실을 절대로 생성하지 마십시오.
@@ -135,9 +137,9 @@ class CriteriaEvaluationService:
 
 **출력 형식 (JSON만 출력):**
 {{
-  "status": "INSUFFICIENT|SATISFIED|NOT_SATISFIED",
+  "status": "SATISFIED|NOT_SATISFIED|INSUFFICIENT",
   "reason": "평가 이유 (2-3문장)",
-  "evidence_gap": "부족한 증거 (INSUFFICIENT일 때만, 그 외는 빈 문자열)"
+  "evidence_gap": "SATISFIED가 아닌 경우(NOT_SATISFIED, INSUFFICIENT 모두) 부족하거나 추가로 필요한 증거를 기재. SATISFIED이면 빈 문자열."
 }}
 """
 
