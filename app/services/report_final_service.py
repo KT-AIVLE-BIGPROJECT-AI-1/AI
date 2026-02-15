@@ -165,13 +165,13 @@ class ReportFinalService:
 잔여 리스크 요약:
 {request.final_analysis.remaining_risk_summary}
 
-**출력 형식 (JSON만 출력):**
+**출력 형식 (반드시 아래 구조의 유효한 단일 JSON 객체만 출력하십시오. 마크다운 코드블록, 설명 텍스트, 주석을 절대 포함하지 마십시오):**
 {{
   "title": "수사결과보고",
   "content": {{
     "case_name": "{request.case_detail.title}",
     "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
-    "criminal_record": "범죄경력자료 및 수사경력자료 (확인된 경우 기재, 미확인 시 '해당 없음')",
+    "charge": "죄명 (적용 법조 기반으로 기재, 반드시 포함할 것)",
     
     "case_overview": {{
       "occurred_at": "{request.case_detail.occurred_at}",
@@ -201,6 +201,8 @@ class ReportFinalService:
 }}
 
 **작성 원칙:**
+- 반드시 위 출력 형식의 유효한 단일 JSON 객체만 출력할 것 (마크다운 코드블록, 설명 텍스트, 주석 금지)
+- 모든 중괄호를 정확히 열고 닫을 것
 - 공문서체 3인칭 과거 시제 (~함, ~였음, ~확인됨, ~판단됨)
 - 객관적 사실과 증거 중심으로 서술
 - 증거 평가: 각 증거의 증명력, 신빙성, 관련성을 구체적으로 평가

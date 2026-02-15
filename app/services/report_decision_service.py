@@ -239,7 +239,7 @@ class ReportDecisionService:
   "content": {{
     "case_name": "{request.case_detail.title}",
     "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
-    "charge": "죄명 (적용 법조 기반으로 기재)",
+    "charge": "죄명 (적용 법조 기반으로 기재, 반드시 포함할 것)",
     
     "ruling": "피의자에 대하여 수사중지 결정함 (구체적 사유를 포함하여 서술)",
     
@@ -250,10 +250,9 @@ class ReportDecisionService:
     }},
     
     "judgement_reason": {{
-      "investigation_progress": "수사 경과를 시간순으로 서술 (~함/~였음)",
-      "suspension_reason": "수사중지의 구체적 사유를 명시하여 서술 (~함/~였음)",
-      "legal_basis": "수사중지의 법적 근거를 명시 (관련 규칙·조항 등)",
-      "future_action": "수사 재개 조건 또는 추가 수사 가능 사항을 서술 (~함/~였음)"
+      "key_judgement": "수사중지 결정의 핵심 근거를 서술 (3-5문장, ~함/~였음)",
+      "detailed_reason": "수사 경과·중지 사유·법적 근거를 종합한 구체적 판단 이유를 서술 (7-10문장, ~함/~였음)",
+      {'"change_reason": "AI 추천과 다른 이유를 구체적으로 서술 (~함/~였음)"' if is_different else ''}
     }},
     
     "evidence_evaluation": {{
@@ -282,8 +281,7 @@ class ReportDecisionService:
   "content": {{
     "case_name": "{request.case_detail.title}",
     "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
-    "criminal_record": "범죄경력자료 및 수사경력자료 (확인된 경우 기재, 미확인 시 '해당 없음')",
-    "charge": "죄명 (적용 법조 기반으로 기재)",
+    "charge": "죄명 (적용 법조 기반으로 기재, 반드시 포함할 것)",
     
     "ruling": "피의자에 대하여 (사유를 포함하여) {user_decision_kr} 결정함 (예: '증거불충분으로 혐의없음 판단되어 불송치 결정함', '범죄사실이 인정되어 송치 결정함' 등)",
     
@@ -308,7 +306,7 @@ class ReportDecisionService:
     "legal_review": {{
       "applicable_law": "적용 법조를 조문 단위로 명시 (예: 형법 제257조 제1항)",
       "elements": "각 구성요건(객관적·주관적 구성요건)별 충족 여부를 구체적으로 검토 (~함/~였음)",
-      "legal_judgement": "위법성·책임성 판단을 포함한 법적 판단 근거 및 결론을 서술 (~함/~였음)"
+      "overall_judgement": "위법성·책임성 판단을 포함한 법적 판단 근거 및 결론을 서술 (~함/~였음)"
     }},
     
     "conclusion": {{
@@ -358,10 +356,13 @@ class ReportDecisionService:
 잔여 리스크 요약:
 {request.final_analysis.remaining_risk_summary}
 
-**출력 형식 (JSON만 출력):**
+**출력 형식 (반드시 아래 구조의 유효한 단일 JSON 객체만 출력하십시오. 마크다운 코드블록, 설명 텍스트, 주석을 절대 포함하지 마십시오):**
 {output_format}
 
 **작성 원칙:**
+- 반드시 위 출력 형식의 유효한 단일 JSON 객체만 출력할 것 (마크다운 코드블록, 설명 텍스트, 주석 금지)
+- 모든 중괄호를 정확히 열고 닫을 것
+- charge(죄명) 필드를 반드시 포함할 것
 - 공문서체 3인칭 과거 시제 (~함, ~였음, ~확인됨, ~판단됨)
 - 사용자 판단({user_decision_kr})을 확고히 뒷받침하는 논리 전개
 - 범죄사실을 일시·장소·방법·결과로 특정하여 기재

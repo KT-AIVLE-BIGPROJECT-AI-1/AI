@@ -166,12 +166,10 @@ class ReportInterimService:
 **수사 활동 내역 ({len(request.selected_activity_logs)}건):**
 {json.dumps(logs_by_field, ensure_ascii=False, indent=2)}
 
-**출력 형식 (JSON만 출력):**
+**출력 형식 (반드시 아래 구조의 유효한 단일 JSON 객체만 출력하십시오. 마크다운 코드블록, 설명 텍스트, 주석을 절대 포함하지 마십시오):**
 {{
   "title": "수사보고",
   "content": {{
-    "case_name": "{request.case_detail.title}",
-    "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
     "case_overview": "사건의 기본 정보와 경위를 서술형으로 기재 (3-5문장, ~함/~였음 어미 사용)",
     "investigation_progress": "시간순 수사 활동 내역을 서술형으로 기재 (5-7문장, ~함/~였음 어미 사용)",
     "current_status": {{
@@ -183,6 +181,8 @@ class ReportInterimService:
 }}
 
 **작성 원칙:**
+- 반드시 위 출력 형식의 유효한 단일 JSON 객체만 출력할 것 (마크다운 코드블록, 설명 텍스트, 주석 금지)
+- 모든 중괄호를 정확히 열고 닫을 것
 - 공문서체 3인칭 과거 시제 (~함, ~였음, ~확인됨, ~판단됨)
 - 객관적 사실과 증거 중심으로 서술
 - 시간순 정리
