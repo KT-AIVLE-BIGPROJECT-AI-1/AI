@@ -74,7 +74,8 @@ class ReportFinalService:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.0,
-                max_tokens=2500
+                max_tokens=4000,
+                response_format={"type": "json_object"}
             )
             
             result_text = response.choices[0].message.content.strip()
