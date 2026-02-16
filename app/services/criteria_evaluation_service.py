@@ -147,7 +147,8 @@ class CriteriaEvaluationService:
             response = client.chat.completions.create(
                 model="gpt-4.1",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.0
+                temperature=0.0,
+                response_format={"type": "json_object"}
             )
 
             result_text = response.choices[0].message.content.strip()
