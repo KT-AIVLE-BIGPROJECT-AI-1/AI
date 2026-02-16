@@ -561,74 +561,92 @@ class InvestigationFileService:
                         c_type = result.get("type", "CROSS_FILE")
                         description = result.get("description", "")
 
+                        # ── 의미적 중복 필터링 ──
+                        # 이미 발견된 모순과 description이 유사하면 스킵
+                        is_duplicate = False
+                        for aid_check in added_contradictions_by_aid.values():
+                            for existing_c in aid_check:
+                                existing_desc = existing_c.get("description", "")
+                                # 핵심 단어 기반 유사도 체크 (양쪽 description에서 명사/동사 3개 이상 겹치면 중복)
+                                existing_words = set(existing_desc.replace(",", " ").replace(".", " ").split())
+                                new_words = set(description.replace(",", " ").replace(".", " ").split())
+                                overlap = existing_words & new_words
+                                if len(overlap) >= min(5, max(len(existing_words), len(new_words)) // 2):
+                                    is_duplicate = True
+                                    break
+                            if is_duplicate:
+                                break
+
+                        if is_duplicate:
+                            print(f"   ⏭️ 의미적 중복 모순 스킵: {sa_temp} vs {sb_temp}")
+                            continue
+
                         # ── CONTRADICTION 생성 (새 ID 체계) ──
-                        # 양쪽 analysis_id 모두에 동일한 모순 항목 추가
-                        for aid in [a_id, b_id]:
-                            ct_next = existing_ct_count_by_aid.get(aid, 0) + len(added_contradictions_by_aid.get(aid, [])) + 1
-                            # ct prefix 결정: 해당 파일의 기존 prefix 확인
-                            rd = AnalysisCallbackService._analysis_results.get(aid, {}).get("result_data", [])
-                            ct_prefix = "ct"
-                            for stage_item in rd:
-                                if isinstance(stage_item, dict) and stage_item.get("stage") == "CONTRADICTION":
-                                    existing_payload = stage_item.get("payload", [])
-                                    if existing_payload and existing_payload[0].get("temp_id"):
-                                        # 기존 prefix 추출 (예: "ct-1" → "ct", "ctB-1" → "ctB")
-                                        existing_id = existing_payload[0]["temp_id"]
-                                        ct_prefix = existing_id.rsplit("-", 1)[0]
-                                        break
+                        # 첫 번째 파일(a_id)에만 추가 (양쪽 중복 추가 방지)
+                        aid = a_id
+                        ct_next = existing_ct_count_by_aid.get(aid, 0) + len(added_contradictions_by_aid.get(aid, [])) + 1
+                        # ct prefix 결정: 해당 파일의 기존 prefix 확인
+                        rd = AnalysisCallbackService._analysis_results.get(aid, {}).get("result_data", [])
+                        ct_prefix = "ct"
+                        for stage_item in rd:
+                            if isinstance(stage_item, dict) and stage_item.get("stage") == "CONTRADICTION":
+                                existing_payload = stage_item.get("payload", [])
+                                if existing_payload and existing_payload[0].get("temp_id"):
+                                    # 기존 prefix 추출 (예: "ct-1" → "ct", "ctB-1" → "ctB")
+                                    existing_id = existing_payload[0]["temp_id"]
+                                    ct_prefix = existing_id.rsplit("-", 1)[0]
+                                    break
 
-                            ct_id = f"{ct_prefix}-{ct_next}"
+                        ct_id = f"{ct_prefix}-{ct_next}"
 
-                            contra = {
-                                "temp_id": ct_id,
-                                "statement_id_1": sa_temp,
-                                "statement_id_2": sb_temp,
-                                "description": description,
-                                "type": c_type
-                            }
-                            added_contradictions_by_aid.setdefault(aid, []).append(contra)
+                        contra = {
+                            "temp_id": ct_id,
+                            "statement_id_1": sa_temp,
+                            "statement_id_2": sb_temp,
+                            "description": description,
+                            "type": c_type
+                        }
+                        added_contradictions_by_aid.setdefault(aid, []).append(contra)
 
-                            # ── QUESTION 생성 (새 ID 체계) ──
-                            sa_speaker = global_ks_speaker_map.get(sa_temp, "미상")
-                            sb_speaker = global_ks_speaker_map.get(sb_temp, "미상")
-                            rationale = result.get("rationale", "교차 모순 확인 필요")
+                        # ── QUESTION 생성 (새 ID 체계) ──
+                        sa_speaker = global_ks_speaker_map.get(sa_temp, "미상")
+                        sb_speaker = global_ks_speaker_map.get(sb_temp, "미상")
+                        rationale = result.get("rationale", "교차 모순 확인 필요")
 
-                            q_prefix = "q"
-                            for stage_item in rd:
-                                if isinstance(stage_item, dict) and stage_item.get("stage") == "QUESTION":
-                                    existing_payload = stage_item.get("payload", [])
-                                    if existing_payload and existing_payload[0].get("temp_id"):
-                                        existing_id = existing_payload[0]["temp_id"]
-                                        q_prefix = existing_id.rsplit("-", 1)[0]
-                                        break
+                        q_prefix = "q"
+                        for stage_item in rd:
+                            if isinstance(stage_item, dict) and stage_item.get("stage") == "QUESTION":
+                                existing_payload = stage_item.get("payload", [])
+                                if existing_payload and existing_payload[0].get("temp_id"):
+                                    existing_id = existing_payload[0]["temp_id"]
+                                    q_prefix = existing_id.rsplit("-", 1)[0]
+                                    break
 
-                            q_base = existing_q_count_by_aid.get(aid, 0) + len(added_questions_by_aid.get(aid, []))
+                        q_base = existing_q_count_by_aid.get(aid, 0) + len(added_questions_by_aid.get(aid, []))
 
-                            # 진술A 관련자에게 질문
-                            question_a = result.get("question_for_a", "")
-                            if question_a:
-                                q_next = q_base + 1
-                                added_questions_by_aid.setdefault(aid, []).append({
-                                    "temp_id": f"{q_prefix}-{q_next}",
-                                    "contradiction_id": ct_id,
-                                    "target": sa_speaker,
-                                    "question": question_a,
-                                    "rationale": rationale
-                                })
+                        # 진술A 관련자에게 질문
+                        question_a = result.get("question_for_a", "")
+                        if question_a:
+                            q_next = q_base + 1
+                            added_questions_by_aid.setdefault(aid, []).append({
+                                "temp_id": f"{q_prefix}-{q_next}",
+                                "contradiction_id": ct_id,
+                                "target": sa_speaker,
+                                "question": question_a,
+                                "rationale": rationale
+                            })
 
-                            # 진술B 관련자에게 질문
-                            question_b = result.get("question_for_b", "")
-                            if question_b:
-                                q_next = q_base + len(added_questions_by_aid.get(aid, [])) - (0 if not question_a else 0) + 1
-                                # 재계산: 현재까지 추가된 수
-                                q_next = existing_q_count_by_aid.get(aid, 0) + len(added_questions_by_aid.get(aid, []))  + 1
-                                added_questions_by_aid.setdefault(aid, []).append({
-                                    "temp_id": f"{q_prefix}-{q_next}",
-                                    "contradiction_id": ct_id,
-                                    "target": sb_speaker,
-                                    "question": question_b,
-                                    "rationale": rationale
-                                })
+                        # 진술B 관련자에게 질문
+                        question_b = result.get("question_for_b", "")
+                        if question_b:
+                            q_next = existing_q_count_by_aid.get(aid, 0) + len(added_questions_by_aid.get(aid, []))  + 1
+                            added_questions_by_aid.setdefault(aid, []).append({
+                                "temp_id": f"{q_prefix}-{q_next}",
+                                "contradiction_id": ct_id,
+                                "target": sb_speaker,
+                                "question": question_b,
+                                "rationale": rationale
+                            })
 
                     except Exception:
                         continue
