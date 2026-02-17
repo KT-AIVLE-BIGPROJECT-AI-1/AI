@@ -5,6 +5,7 @@
 #    수사중지: 중지 사유 + 법적 근거
 
 import json
+import re
 from datetime import datetime
 from openai import OpenAI
 from app.config import settings
@@ -15,6 +16,33 @@ from app.models.report_decision_schema import (
 from app.services.report_storage_service import ReportStorageService
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+# ── 보고서 텍스트 정제 유틸 ──
+_UUID_RE = re.compile(r'\(?\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b\)?')
+_STATUS_MAP = {
+    "NOT_SATISFIED": "미충족",
+    "SATISFIED": "충족",
+    "INSUFFICIENT": "불충분",
+    "TRANSFER": "송치",
+    "NON_TRANSFER": "불송치",
+    "SUSPENSION": "수사중지",
+}
+
+def _sanitize_text(obj):
+    """dict/list/str 재귀 - UUID 제거 + 영문 상태값 한글 변환"""
+    if isinstance(obj, str):
+        text = _UUID_RE.sub('', obj)
+        for eng, kor in _STATUS_MAP.items():
+            text = text.replace(eng, kor)
+        text = re.sub(r'\s{2,}', ' ', text).strip()
+        text = re.sub(r'\(\s*\)', '', text).strip()
+        return text
+    elif isinstance(obj, dict):
+        return {k: _sanitize_text(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_sanitize_text(v) for v in obj]
+    return obj
+
 
 # 결정 유형 한글 변환 맵 (전역)
 DECISION_MAP = {
@@ -39,9 +67,6 @@ WRITING_STYLE_DIRECTIVE = """
    - 주관적 추측, 감정적 표현 배제
    - "~한 것으로 보임", "~한 것으로 판단됨" 등 객관적 추정 표현 사용
 3. 전문 법률·수사 용어를 정확히 사용할 것.
-4. **[환각 방지]** 입력된 사건 정보와 분석 결과에 없는 내용을 절대로 생성하지 마십시오.
-   - 제공된 데이터에서 확인할 수 없는 증거, 인물, 사실을 추가하지 말 것
-   - 추측이나 가정에 의한 내용 서술 금지
 """
 
 
@@ -120,7 +145,7 @@ class ReportDecisionService:
         # GPT-4o로 결정서 생성
         try:
             response = client.chat.completions.create(
-                model="gpt-4.1",
+                model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
@@ -134,9 +159,8 @@ class ReportDecisionService:
                     },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.0,
-                max_tokens=4000,
-                response_format={"type": "json_object"}
+                temperature=0.3,
+                max_tokens=3000
             )
             
             result_text = response.choices[0].message.content.strip()
@@ -147,7 +171,7 @@ class ReportDecisionService:
             result = json.loads(result_text)
             
             title = result.get("title", "")
-            content = result.get("content", {})
+            content = _sanitize_text(result.get("content", {}))
             
             # 영문 enum이 남아있으면 한글로 치환
             content = ReportDecisionService._replace_english_decisions(content)
@@ -239,10 +263,10 @@ class ReportDecisionService:
   "title": "수사중지 결정서",
   "content": {{
     "case_name": "{request.case_detail.title}",
-    "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
-    "charge": "죄명 (적용 법조 기반으로 기재, 반드시 포함할 것)",
+    "suspect": null,
+    "charge": "죄명 (적용 법조 기반으로 기재)",
     
-    "ruling": "피의자에 대하여 수사중지 결정함 (구체적 사유를 포함하여 서술)",
+    "ruling": "피의자에 대하여 [사유]로 수사중지 결정함 (예: 피의자 소재불명으로 수사중지 결정함)",
     
     "case_overview": {{
       "occurred_at": "{request.case_detail.occurred_at}",
@@ -251,9 +275,10 @@ class ReportDecisionService:
     }},
     
     "judgement_reason": {{
-      "key_judgement": "수사중지 결정의 핵심 근거를 서술 (3-5문장, ~함/~였음)",
-      "detailed_reason": "수사 경과·중지 사유·법적 근거를 종합한 구체적 판단 이유를 서술 (7-10문장, ~함/~였음)",
-      {'"change_reason": "AI 추천과 다른 이유를 구체적으로 서술 (~함/~였음)"' if is_different else ''}
+      "investigation_progress": "수사 경과를 시간순으로 서술 (~함/~였음)",
+      "suspension_reason": "수사중지의 구체적 사유를 명시하여 서술 (~함/~였음)",
+      "legal_basis": "수사중지의 법적 근거를 명시 (관련 규칙·조항 등)",
+      "future_action": "수사 재개 조건 또는 추가 수사 가능 사항을 서술 (~함/~였음)"
     }},
     
     "evidence_evaluation": {{
@@ -281,10 +306,11 @@ class ReportDecisionService:
   "title": "{user_decision_kr} 결정서",
   "content": {{
     "case_name": "{request.case_detail.title}",
-    "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
-    "charge": "죄명 (적용 법조 기반으로 기재, 반드시 포함할 것)",
+    "suspect": null,
+    "criminal_record": "범죄경력자료 및 수사경력자료 (확인된 경우 기재, 미확인 시 '해당 없음')",
+    "charge": "죄명 (적용 법조 기반으로 기재)",
     
-    "ruling": "피의자에 대하여 (사유를 포함하여) {user_decision_kr} 결정함 (예: '증거불충분으로 혐의없음 판단되어 불송치 결정함', '범죄사실이 인정되어 송치 결정함' 등)",
+    "ruling": "피의자에 대하여 [사유]로 {user_decision_kr} 결정함 (예: 피의자에 대하여 송치 결정함, 증거불충분으로 혐의없음 판단되어 불송치 결정함)",
     
     "case_overview": {{
       "occurred_at": "{request.case_detail.occurred_at}",
@@ -307,7 +333,7 @@ class ReportDecisionService:
     "legal_review": {{
       "applicable_law": "적용 법조를 조문 단위로 명시 (예: 형법 제257조 제1항)",
       "elements": "각 구성요건(객관적·주관적 구성요건)별 충족 여부를 구체적으로 검토 (~함/~였음)",
-      "overall_judgement": "위법성·책임성 판단을 포함한 법적 판단 근거 및 결론을 서술 (~함/~였음)"
+      "legal_judgement": "위법성·책임성 판단을 포함한 법적 판단 근거 및 결론을 서술 (~함/~였음)"
     }},
     
     "conclusion": {{
@@ -357,13 +383,10 @@ class ReportDecisionService:
 잔여 리스크 요약:
 {request.final_analysis.remaining_risk_summary}
 
-**출력 형식 (반드시 아래 구조의 유효한 단일 JSON 객체만 출력하십시오. 마크다운 코드블록, 설명 텍스트, 주석을 절대 포함하지 마십시오):**
+**출력 형식 (JSON만 출력):**
 {output_format}
 
 **작성 원칙:**
-- 반드시 위 출력 형식의 유효한 단일 JSON 객체만 출력할 것 (마크다운 코드블록, 설명 텍스트, 주석 금지)
-- 모든 중괄호를 정확히 열고 닫을 것
-- charge(죄명) 필드를 반드시 포함할 것
 - 공문서체 3인칭 과거 시제 (~함, ~였음, ~확인됨, ~판단됨)
 - 사용자 판단({user_decision_kr})을 확고히 뒷받침하는 논리 전개
 - 범죄사실을 일시·장소·방법·결과로 특정하여 기재
@@ -374,6 +397,8 @@ class ReportDecisionService:
 - 객관적이고 설득력 있는 근거 제시
 - 경어체(~합니다) 및 평서체(~한다) 절대 금지
 - 영문 코드가 아닌 한글(송치/불송치/수사중지)만 사용할 것
+- 내부 시스템 ID(UUID, 영문+숫자+하이픈 조합)를 보고서 내용에 절대 포함하지 마십시오
+- 영문 상태코드(SATISFIED, NOT_SATISFIED, INSUFFICIENT 등)를 한글(충족, 미충족, 불충분)로 변환하여 사용하십시오
 {f"- AI 추천({ai_decision_kr})과 다른 이유를 명확히 설명" if is_different else ""}
 """
         

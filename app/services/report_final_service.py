@@ -3,6 +3,7 @@
 # ✅ 증거 평가 + 법리 검토 포함 지시
 
 import json
+import re
 from datetime import datetime
 from openai import OpenAI
 from app.config import settings
@@ -13,6 +14,33 @@ from app.models.report_final_schema import (
 from app.services.report_storage_service import ReportStorageService
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+# ── 보고서 텍스트 정제 유틸 ──
+_UUID_RE = re.compile(r'\(?\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b\)?')
+_STATUS_MAP = {
+    "NOT_SATISFIED": "미충족",
+    "SATISFIED": "충족",
+    "INSUFFICIENT": "불충분",
+    "TRANSFER": "송치",
+    "NON_TRANSFER": "불송치",
+    "SUSPENSION": "수사중지",
+}
+
+def _sanitize_text(obj):
+    """dict/list/str 재귀 - UUID 제거 + 영문 상태값 한글 변환"""
+    if isinstance(obj, str):
+        text = _UUID_RE.sub('', obj)
+        for eng, kor in _STATUS_MAP.items():
+            text = text.replace(eng, kor)
+        text = re.sub(r'\s{2,}', ' ', text).strip()
+        text = re.sub(r'\(\s*\)', '', text).strip()
+        return text
+    elif isinstance(obj, dict):
+        return {k: _sanitize_text(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_sanitize_text(v) for v in obj]
+    return obj
+
 
 
 # ============================================================
@@ -30,9 +58,6 @@ WRITING_STYLE_DIRECTIVE = """
    - 주관적 추측, 감정적 표현 배제
    - "~한 것으로 보임", "~한 것으로 판단됨" 등 객관적 추정 표현 사용
 3. 전문 법률·수사 용어를 정확히 사용할 것.
-4. **[환각 방지]** 입력된 사건 정보와 분석 결과에 없는 내용을 절대로 생성하지 마십시오.
-   - 제공된 데이터에서 확인할 수 없는 증거, 인물, 사실을 추가하지 말 것
-   - 추측이나 가정에 의한 내용 서술 금지
 """
 
 
@@ -60,7 +85,7 @@ class ReportFinalService:
         # GPT-4o로 보고서 생성
         try:
             response = client.chat.completions.create(
-                model="gpt-4.1",
+                model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
@@ -73,9 +98,8 @@ class ReportFinalService:
                     },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.0,
-                max_tokens=4000,
-                response_format={"type": "json_object"}
+                temperature=0.3,
+                max_tokens=2500
             )
             
             result_text = response.choices[0].message.content.strip()
@@ -87,7 +111,7 @@ class ReportFinalService:
             result = json.loads(result_text)
             
             title = result.get("title", "")
-            content = result.get("content", {})
+            content = _sanitize_text(result.get("content", {}))
             
             # 내부 저장 (PDF 등)
             ReportStorageService.save_report(
@@ -140,7 +164,6 @@ class ReportFinalService:
 - 법리 검토: 적용 법조를 명시하고, 각 구성요건별 충족 여부를 검토하여 서술할 것
 
 **사건 정보:**
-사건번호: {request.case_detail.case_id}
 사건명: {request.case_detail.title}
 사건유형: {request.case_detail.type}
 사건상태: {request.case_detail.status}
@@ -166,13 +189,13 @@ class ReportFinalService:
 잔여 리스크 요약:
 {request.final_analysis.remaining_risk_summary}
 
-**출력 형식 (반드시 아래 구조의 유효한 단일 JSON 객체만 출력하십시오. 마크다운 코드블록, 설명 텍스트, 주석을 절대 포함하지 마십시오):**
+**출력 형식 (JSON만 출력):**
 {{
   "title": "수사결과보고",
   "content": {{
     "case_name": "{request.case_detail.title}",
-    "suspect": "피의자 성명 (사건 정보에서 파악된 경우 기재, 파악할 수 없으면 null)",
-    "charge": "죄명 (적용 법조 기반으로 기재, 반드시 포함할 것)",
+    "suspect": "피의자 성명 (미상이면 null로 출력)",
+    "criminal_record": "범죄경력자료 및 수사경력자료 (확인된 경우 기재, 미확인 시 '해당 없음')",
     
     "case_overview": {{
       "occurred_at": "{request.case_detail.occurred_at}",
@@ -202,8 +225,6 @@ class ReportFinalService:
 }}
 
 **작성 원칙:**
-- 반드시 위 출력 형식의 유효한 단일 JSON 객체만 출력할 것 (마크다운 코드블록, 설명 텍스트, 주석 금지)
-- 모든 중괄호를 정확히 열고 닫을 것
 - 공문서체 3인칭 과거 시제 (~함, ~였음, ~확인됨, ~판단됨)
 - 객관적 사실과 증거 중심으로 서술
 - 증거 평가: 각 증거의 증명력, 신빙성, 관련성을 구체적으로 평가
@@ -212,6 +233,8 @@ class ReportFinalService:
 - 근거와 결론 명확히 구분
 - 송치의견에 부합하는 논리적 전개
 - 경어체(~합니다) 및 평서체(~한다) 절대 금지
+- 내부 시스템 ID(UUID, 영문+숫자+하이픈 조합)를 보고서 내용에 절대 포함하지 마십시오
+- 영문 상태코드(SATISFIED, NOT_SATISFIED, INSUFFICIENT 등)를 한글(충족, 미충족, 불충분)로 변환하여 사용하십시오
 """
         
         return prompt

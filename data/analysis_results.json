@@ -1989,5 +1989,464 @@
         ]
       }
     ]
+  },
+  "a1b2c3d4-1111-4000-a000-000000000001": {
+    "case_id": "73018fea-99ef-4061-b54f-15377df4132c",
+    "analysis_id": "a1b2c3d4-1111-4000-a000-000000000001",
+    "file_type": "AUDIO",
+    "origin_name": "녹취록_알파.mp3",
+    "status": "COMPLETED",
+    "result_data": [
+      {
+        "stage": "TRANSCRIPT",
+        "payload": [
+          {
+            "temp_id": "tr-1",
+            "speaker": "수사관",
+            "content": "2026년 2월 26일 오후 3시 10분입니다. 저는 서울 영등포경찰서 형사과 소속 경위 이도현입니다. 녹취 대상은 알파 남 17세 고등학생 입니다. 지금부터 한강 인근 수변 산책로 데크 폭행 사건에 대한 조사를 시작 합니다."
+          },
+          {
+            "temp_id": "tr-2",
+            "speaker": "수사관",
+            "content": "사건 당일 한강에 간 사실 있습니까"
+          },
+          {
+            "temp_id": "tr-3",
+            "speaker": "피의자",
+            "content": "아니요 간 적 없습니다."
+          },
+          {
+            "temp_id": "tr-4",
+            "speaker": "수사관",
+            "content": "점심시간 어디 있었습니까"
+          },
+          {
+            "temp_id": "tr-5",
+            "speaker": "피의자",
+            "content": "학교 매점에 있었습니다."
+          },
+          {
+            "temp_id": "tr-6",
+            "speaker": "수사관",
+            "content": "매점 cctv 확인 결과 12시 20분 이후 모습이 없습니다."
+          },
+          {
+            "temp_id": "tr-7",
+            "speaker": "피의자",
+            "content": "아 잠깐 밖에 나갔습니다."
+          },
+          {
+            "temp_id": "tr-8",
+            "speaker": "수사관",
+            "content": "어디로 갔습니까"
+          },
+          {
+            "temp_id": "tr-9",
+            "speaker": "피의자",
+            "content": "친구를 만나러 근처 공원에 갔습니다."
+          },
+          {
+            "temp_id": "tr-10",
+            "speaker": "수사관",
+            "content": "한강은 아닙니까"
+          },
+          {
+            "temp_id": "tr-11",
+            "speaker": "피의자",
+            "content": "아니요 한강은 아니었습니다."
+          },
+          {
+            "temp_id": "tr-12",
+            "speaker": "수사관",
+            "content": "베타는 함께 한강에 있었다고 진술 했습니다."
+          },
+          {
+            "temp_id": "tr-13",
+            "speaker": "피의자",
+            "content": "그건 거짓말입니다."
+          },
+          {
+            "temp_id": "tr-14",
+            "speaker": "수사관",
+            "content": "감마는 당신이 먼저 밀었다고 했습니다."
+          },
+          {
+            "temp_id": "tr-15",
+            "speaker": "피의자",
+            "content": "저는 그날 누구도 밀지 않았습니다."
+          },
+          {
+            "temp_id": "tr-16",
+            "speaker": "수사관",
+            "content": "김몰라와 갈등 있었습니까"
+          },
+          {
+            "temp_id": "tr-17",
+            "speaker": "피의자",
+            "content": "전혀 없었습니다."
+          },
+          {
+            "temp_id": "tr-18",
+            "speaker": "수사관",
+            "content": "작년 10월 다툼 기록 있습니다."
+          },
+          {
+            "temp_id": "tr-19",
+            "speaker": "피의자",
+            "content": "아 말다툼은 있었지만 심각하지 않았습니다."
+          },
+          {
+            "temp_id": "tr-20",
+            "speaker": "수사관",
+            "content": "그날 김몰라를 본 적 있습니까"
+          },
+          {
+            "temp_id": "tr-21",
+            "speaker": "피의자",
+            "content": "없습니다."
+          },
+          {
+            "temp_id": "tr-22",
+            "speaker": "수사관",
+            "content": "휴대전화 위치기록 한강 인근입니다."
+          },
+          {
+            "temp_id": "tr-23",
+            "speaker": "피의자",
+            "content": "아 그건 지나가다 잠깐 들른 겁니다."
+          },
+          {
+            "temp_id": "tr-24",
+            "speaker": "수사관",
+            "content": "방금 한강 간 적 없다고 했습니다."
+          },
+          {
+            "temp_id": "tr-25",
+            "speaker": "피의자",
+            "content": "정확히는 산책로까지는 안 갔습니다."
+          },
+          {
+            "temp_id": "tr-26",
+            "speaker": "수사관",
+            "content": "데크는 안 갔습니까"
+          },
+          {
+            "temp_id": "tr-27",
+            "speaker": "피의자",
+            "content": "네 데크는 안 갔습니다."
+          },
+          {
+            "temp_id": "tr-28",
+            "speaker": "수사관",
+            "content": "목격자는 당신이 어깨를 밀었다고 했습니다."
+          },
+          {
+            "temp_id": "tr-29",
+            "speaker": "피의자",
+            "content": "절대 아닙니다."
+          },
+          {
+            "temp_id": "tr-30",
+            "speaker": "수사관",
+            "content": "그날 복장 기억합니까"
+          },
+          {
+            "temp_id": "tr-31",
+            "speaker": "피의자",
+            "content": "교복이었습니다."
+          },
+          {
+            "temp_id": "tr-32",
+            "speaker": "수사관",
+            "content": "사진에는 체육복입니다."
+          },
+          {
+            "temp_id": "tr-33",
+            "speaker": "피의자",
+            "content": "아 체육복 위에 교복을 입었습니다."
+          },
+          {
+            "temp_id": "tr-34",
+            "speaker": "수사관",
+            "content": "친구들과 있었습니까"
+          },
+          {
+            "temp_id": "tr-35",
+            "speaker": "피의자",
+            "content": "혼자였습니다."
+          },
+          {
+            "temp_id": "tr-36",
+            "speaker": "수사관",
+            "content": "베타는 셋이 같이 있었다고 합니다."
+          },
+          {
+            "temp_id": "tr-37",
+            "speaker": "피의자",
+            "content": "잠깐 합류했을 수도 있습니다."
+          },
+          {
+            "temp_id": "tr-38",
+            "speaker": "수사관",
+            "content": "몇 시에 귀가했습니까"
+          },
+          {
+            "temp_id": "tr-39",
+            "speaker": "피의자",
+            "content": "1시 전에 집에 갔습니다."
+          },
+          {
+            "temp_id": "tr-40",
+            "speaker": "수사관",
+            "content": "통화기록 1시 20분 한강 기지국 입니다."
+          },
+          {
+            "temp_id": "tr-41",
+            "speaker": "피의자",
+            "content": "기억이 잘 안납니다."
+          },
+          {
+            "temp_id": "tr-42",
+            "speaker": "수사관",
+            "content": "김몰라와 신체 접촉 없습니까"
+          },
+          {
+            "temp_id": "tr-43",
+            "speaker": "피의자",
+            "content": "없습니다."
+          },
+          {
+            "temp_id": "tr-44",
+            "speaker": "수사관",
+            "content": "손에 긁힌 상처는 무엇입니까"
+          },
+          {
+            "temp_id": "tr-45",
+            "speaker": "피의자",
+            "content": "넘어져서 다쳤습니다."
+          },
+          {
+            "temp_id": "tr-46",
+            "speaker": "수사관",
+            "content": "어디서 넘어졌습니까"
+          },
+          {
+            "temp_id": "tr-47",
+            "speaker": "피의자",
+            "content": "학교 계단입니다."
+          },
+          {
+            "temp_id": "tr-48",
+            "speaker": "수사관",
+            "content": "계단 cctv 이상 없음 확인되었습니다."
+          },
+          {
+            "temp_id": "tr-49",
+            "speaker": "피의자",
+            "content": "그럼 집 앞이었을 겁니다."
+          },
+          {
+            "temp_id": "tr-50",
+            "speaker": "수사관",
+            "content": "진술 번복입니까"
+          },
+          {
+            "temp_id": "tr-51",
+            "speaker": "피의자",
+            "content": "기억이 혼란스럽습니다."
+          },
+          {
+            "temp_id": "tr-52",
+            "speaker": "수사관",
+            "content": "본사건과 무관합니까"
+          },
+          {
+            "temp_id": "tr-53",
+            "speaker": "피의자",
+            "content": "네 무관합니다."
+          },
+          {
+            "temp_id": "tr-54",
+            "speaker": "수사관",
+            "content": "최종 진술 번복 없습니까"
+          },
+          {
+            "temp_id": "tr-55",
+            "speaker": "피의자",
+            "content": "없습니다."
+          },
+          {
+            "temp_id": "tr-56",
+            "speaker": "수사관",
+            "content": "이상으로 조사를 종료합니다."
+          }
+        ]
+      },
+      {
+        "stage": "KEY_STATEMENT",
+        "payload": [
+          {
+            "temp_id": "ks-1",
+            "transcript_id": "tr-3",
+            "statement_text": "아니요 간 적 없습니다.",
+            "content": "피의자가 사건 당일 한강에 가지 않았다고 부인하는 진술로, 범행 현장 부재(알리바이)를 주장함. 사건 장소와의 직접적 관련성을 부정하는 핵심 진술임."
+          },
+          {
+            "temp_id": "ks-2",
+            "transcript_id": "tr-13",
+            "statement_text": "그건 거짓말입니다.",
+            "content": "공범 중 한 명(베타)이 피의자와 함께 한강에 있었다고 진술한 것에 대해, 피의자가 이를 부정함. 공범과의 공모 및 현장 동행 여부에 대한 핵심 진술임."
+          },
+          {
+            "temp_id": "ks-3",
+            "transcript_id": "tr-15",
+            "statement_text": "저는 그날 누구도 밀지 않았습니다.",
+            "content": "피의자가 폭행(물리력 행사) 사실 자체를 부인하는 진술로, 범죄 구성요건(폭행의 실행)에 대한 직접적 부정임."
+          },
+          {
+            "temp_id": "ks-4",
+            "transcript_id": "tr-21",
+            "statement_text": "없습니다.",
+            "content": "피해자(김몰라)를 사건 당일 본 적이 없다고 진술함. 피해자와의 접촉 및 범행 실행 가능성을 부정하는 핵심 진술임."
+          },
+          {
+            "temp_id": "ks-5",
+            "transcript_id": "tr-22",
+            "statement_text": "휴대전화 위치기록 한강 인근입니다.",
+            "content": "수사관이 피의자의 휴대전화 위치기록이 사건 현장 인근임을 지적함. 피의자의 알리바이 및 현장 부재 주장에 반하는 객관적 증거 제시임."
+          },
+          {
+            "temp_id": "ks-6",
+            "transcript_id": "tr-23",
+            "statement_text": "아 그건 지나가다 잠깐 들른 겁니다.",
+            "content": "피의자가 한강 인근에 있었음을 인정하면서도, 사건과 무관하게 잠깐 들렀다고 진술함. 현장 출입 사실을 일부 인정하는 진술로, 범행 연관성에 대한 해명임."
+          },
+          {
+            "temp_id": "ks-7",
+            "transcript_id": "tr-27",
+            "statement_text": "네 데크는 안 갔습니다.",
+            "content": "피의자가 사건이 발생한 구체적 장소(목재 데크)에는 가지 않았다고 진술함. 범행 현장 부재를 재차 주장하는 핵심 진술임."
+          },
+          {
+            "temp_id": "ks-8",
+            "transcript_id": "tr-29",
+            "statement_text": "절대 아닙니다.",
+            "content": "목격자가 피의자가 피해자를 밀었다고 진술한 것에 대해, 피의자가 이를 강하게 부인함. 폭행 실행 여부에 대한 직접적 부정임."
+          },
+          {
+            "temp_id": "ks-9",
+            "transcript_id": "tr-36",
+            "statement_text": "베타는 셋이 같이 있었다고 합니다.",
+            "content": "수사관이 공범(베타)의 진술을 통해 피의자와 공범 3인이 함께 있었다는 사실을 제시함. 집단 범행의 공모 및 실행 여부를 입증하는 진술임."
+          },
+          {
+            "temp_id": "ks-10",
+            "transcript_id": "tr-37",
+            "statement_text": "잠깐 합류했을 수도 있습니다.",
+            "content": "피의자가 공범들과의 동행 사실을 일부 인정하는 진술로, 집단 범행의 공모 및 실행 가능성을 시사함."
+          }
+        ]
+      },
+      {
+        "stage": "CONTRADICTION",
+        "payload": [
+          {
+            "temp_id": "ct-1",
+            "statement_id_1": "ks-1",
+            "statement_id_2": "ks-6",
+            "description": "피의자는 처음에 사건 당일 한강에 간 적이 없다고 진술했으나, 이후 한강 인근에 잠깐 들렀다고 인정하여 한강 방문 여부에 대해 진술이 모순된다.",
+            "type": "CONTENT"
+          },
+          {
+            "temp_id": "ct-2",
+            "statement_id_1": "ks-7",
+            "statement_id_2": "ks-5",
+            "description": "피의자는 사건이 발생한 목재 데크에는 가지 않았다고 진술했으나, 수사관은 피의자의 휴대전화 위치기록이 사건 현장 인근임을 지적하여 현장 부재 주장과 객관적 증거가 상충된다.",
+            "type": "LOCATION"
+          },
+          {
+            "temp_id": "ct-3",
+            "statement_id_1": "ks-4",
+            "statement_id_2": "ks-9",
+            "description": "피의자는 사건 당일 피해자를 본 적이 없다고 진술했으나, 수사관은 공범의 진술을 근거로 피의자와 공범 3인이 함께 있었다고 제시하여 피해자와의 접촉 여부에 대해 모순이 발생한다.",
+            "type": "CONTENT"
+          },
+          {
+            "temp_id": "ct-4",
+            "statement_id_1": "ks-1",
+            "statement_id_2": "ks-5",
+            "description": "피의자는 한강에 가지 않았다고 진술했으나, 수사관은 피의자의 휴대전화 위치기록이 한강 인근임을 제시하여 현장 부재 주장과 객관적 증거가 모순된다.",
+            "type": "LOCATION"
+          },
+          {
+            "temp_id": "ct-5",
+            "statement_id_1": "ks-9",
+            "statement_id_2": "ks-10",
+            "description": "수사관은 공범의 진술을 근거로 피의자와 공범 3인이 함께 있었다고 제시했으나, 피의자는 잠깐 합류했을 수도 있다고 진술하여 동행 사실에 대한 진술이 일치하지 않는다.",
+            "type": "CONTENT"
+          }
+        ]
+      },
+      {
+        "stage": "QUESTION",
+        "payload": [
+          {
+            "temp_id": "q-1",
+            "contradiction_id": "ct-1",
+            "target": "알파",
+            "question": "처음에는 한강에 가지 않았다고 진술했으나, 이후 한강 인근에 잠깐 들렀다고 했습니다. 정확히 어느 시각, 어떤 경로로 한강 인근에 들렀는지 구체적으로 설명해 주시겠습니까?",
+            "rationale": "한강 방문 여부에 대한 진술이 번복되어, 실제 방문 사실과 경위를 명확히 확인할 필요가 있음."
+          },
+          {
+            "temp_id": "q-2",
+            "contradiction_id": "ct-2",
+            "target": "알파",
+            "question": "사건이 발생한 목재 데크에는 가지 않았다고 했으나, 휴대전화 위치기록이 사건 현장 인근으로 확인됩니다. 데크와의 실제 거리 및 이동 경로를 상세히 설명해 주시겠습니까?",
+            "rationale": "현장 부재 주장과 위치기록이 상충하므로, 데크 접근 여부와 구체적 동선을 확인할 필요가 있음."
+          },
+          {
+            "temp_id": "q-3",
+            "contradiction_id": "ct-3",
+            "target": "알파",
+            "question": "사건 당일 피해자(김몰라)를 본 적이 없다고 했으나, 공범의 진술에 따르면 3인이 함께 있었다고 합니다. 피해자와 같은 공간에 있었던 사실이 있는지, 있었다면 어떤 상황이었는지 설명해 주시겠습니까?",
+            "rationale": "피해자와의 접촉 여부에 대한 진술이 상충하므로, 실제 만남 및 상황을 명확히 할 필요가 있음."
+          },
+          {
+            "temp_id": "q-4",
+            "contradiction_id": "ct-4",
+            "target": "알파",
+            "question": "한강에 가지 않았다고 했으나, 휴대전화 위치기록이 한강 인근으로 확인됩니다. 위치기록이 한강 인근으로 나온 이유를 구체적으로 설명해 주시겠습니까?",
+            "rationale": "현장 부재 주장과 객관적 증거가 모순되므로, 위치기록의 해명 및 실제 이동 경위를 확인할 필요가 있음."
+          },
+          {
+            "temp_id": "q-5",
+            "contradiction_id": "ct-5",
+            "target": "알파",
+            "question": "공범의 진술에 따르면 3인이 함께 있었다고 하나, 본인은 잠깐 합류했을 수도 있다고 했습니다. 정확히 언제, 어디서, 누구와 합류했는지 구체적으로 진술해 주시겠습니까?",
+            "rationale": "동행 사실에 대한 진술이 불명확하므로, 합류 시점과 상황을 명확히 확인할 필요가 있음."
+          }
+        ]
+      }
+    ]
+  },
+  "a1b2c3d4-4444-4000-a000-000000000004": {
+    "case_id": "73018fea-99ef-4061-b54f-15377df4132c",
+    "analysis_id": "a1b2c3d4-4444-4000-a000-000000000004",
+    "file_type": "VIDEO",
+    "origin_name": "7-4_cam02_assault01_place04_day_summer.mp4",
+    "status": "FAILED",
+    "result_data": [
+      {
+        "stage": "VIDEO_EVENT",
+        "payload": [
+          {
+            "start_time": 0.0,
+            "end_time": 0.0,
+            "event_type": "OTHER",
+            "event_description": "분석 실패: Client error '404 File not found' for url 'http://localhost:9000/7-4_cam02_assault01_place04_day_summer.mp4'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+          }
+        ]
+      }
+    ]
   }
 }

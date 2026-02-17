@@ -1,6 +1,7 @@
 # app/services/analysis_final_service.py
 
 import json
+import re
 from collections import Counter
 from typing import Dict, List, Any
 from openai import OpenAI
@@ -12,6 +13,33 @@ from app.models.analysis_final_schema import (
 )
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+# ── 보고서 텍스트 정제 유틸 ──
+_UUID_RE = re.compile(r'\(?\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b\)?')
+_STATUS_MAP = {
+    "NOT_SATISFIED": "미충족",
+    "SATISFIED": "충족",
+    "INSUFFICIENT": "불충분",
+    "TRANSFER": "송치",
+    "NON_TRANSFER": "불송치",
+    "SUSPENSION": "수사중지",
+}
+
+def _sanitize_text(obj):
+    """dict/list/str 재귀 - UUID 제거 + 영문 상태값 한글 변환"""
+    if isinstance(obj, str):
+        text = _UUID_RE.sub('', obj)
+        for eng, kor in _STATUS_MAP.items():
+            text = text.replace(eng, kor)
+        text = re.sub(r'\s{2,}', ' ', text).strip()
+        text = re.sub(r'\(\s*\)', '', text).strip()
+        return text
+    elif isinstance(obj, dict):
+        return {k: _sanitize_text(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_sanitize_text(v) for v in obj]
+    return obj
+
 
 
 # ============================================================
@@ -74,13 +102,14 @@ def generate_final_analysis(
     evidence_details = []
     for a in analysis_list:
         file_type = a.get('file_type', 'UNKNOWN')
-        analysis_id = a.get('analysis_id', '')
+        # UUID 대신 파일명 사용
+        label = a.get('origin_name', '') or f"증거_{len(evidence_details)+1}"
         result_data = a.get('result_data', '')
         
         if file_type in ('DOCUMENT', 'IMAGE'):
             # 문서/이미지: 텍스트 요약
             summary_text = str(result_data)[:300] if result_data else "(분석 결과 없음)"
-            evidence_details.append(f"[{file_type}] {analysis_id}: {summary_text}")
+            evidence_details.append(f"[{file_type}] {label}: {summary_text}")
         
         elif file_type == 'VIDEO':
             # 영상: VIDEO_EVENT 요약
@@ -96,9 +125,9 @@ def generate_final_analysis(
                                 start = evt.get('start_time', '')
                                 end = evt.get('end_time', '')
                                 events.append(f"{evt_type}: {evt_desc} ({start}s~{end}s)")
-                evidence_details.append(f"[VIDEO] {analysis_id}: {', '.join(events) if events else '(이벤트 없음)'}")
+                evidence_details.append(f"[VIDEO] {label}: {', '.join(events) if events else '(이벤트 없음)'}")
             else:
-                evidence_details.append(f"[VIDEO] {analysis_id}: {str(result_data)[:200]}")
+                evidence_details.append(f"[VIDEO] {label}: {str(result_data)[:200]}")
         
         elif file_type == 'AUDIO':
             # 음성: stage별 요약
@@ -123,7 +152,7 @@ def generate_final_analysis(
                             if isinstance(payload, list):
                                 qs = [q.get('question', '') for q in payload]
                                 audio_parts.append(f"추가질문: {', '.join(qs)}")
-                evidence_details.append(f"[AUDIO] {analysis_id}: {'; '.join(audio_parts) if audio_parts else '(내용 없음)'}")
+                evidence_details.append(f"[AUDIO] {label}: {'; '.join(audio_parts) if audio_parts else '(내용 없음)'}")
             elif isinstance(result_data, str):
                 # result_data가 JSON 문자열인 경우
                 try:
@@ -148,13 +177,13 @@ def generate_final_analysis(
                                 if isinstance(payload, list):
                                     qs = [q.get('question', '') for q in payload]
                                     audio_parts.append(f"추가질문: {', '.join(qs)}")
-                        evidence_details.append(f"[AUDIO] {analysis_id}: {'; '.join(audio_parts) if audio_parts else '(내용 없음)'}")
+                        evidence_details.append(f"[AUDIO] {label}: {'; '.join(audio_parts) if audio_parts else '(내용 없음)'}")
                     else:
-                        evidence_details.append(f"[AUDIO] {analysis_id}: {str(result_data)[:200]}")
+                        evidence_details.append(f"[AUDIO] {label}: {str(result_data)[:200]}")
                 except (json.JSONDecodeError, AttributeError):
-                    evidence_details.append(f"[AUDIO] {analysis_id}: {str(result_data)[:200]}")
+                    evidence_details.append(f"[AUDIO] {label}: {str(result_data)[:200]}")
             else:
-                evidence_details.append(f"[AUDIO] {analysis_id}: {str(result_data)[:200]}")
+                evidence_details.append(f"[AUDIO] {label}: {str(result_data)[:200]}")
     
     evidence_details_text = "\n".join(evidence_details[:15])  # 최대 15건
     
@@ -216,11 +245,7 @@ def generate_final_analysis(
     # GPT 프롬프트
     prompt = f"""당신은 형사 사건 분석 전문가입니다. 
 아래 모든 정보를 종합하여 **최종 송치 의견**을 작성하십시오.
-
-**[환각 방지 규칙]**
-- 아래 제공된 사건 정보, 증거, 법리 평가 데이터에 없는 내용을 절대로 생성하지 마십시오.
-- 제공된 데이터만을 근거로 판단하고, 추측이나 가정에 의한 내용 추가를 금지합니다.
-- 증거에서 확인할 수 없는 사실은 언급하지 마십시오.
+**중요: 내부 시스템 ID(UUID)를 출력에 절대 포함하지 마십시오. 영문 상태코드(SATISFIED 등)는 한글(충족/미충족/불충분)로 변환하여 사용하십시오.**
 
 {case_info}
 
@@ -298,14 +323,19 @@ JSON만 출력:
 
     try:
         response = openai_client.chat.completions.create(
-            model="gpt-4.1",
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.0,
+            temperature=0.2,
             response_format={"type": "json_object"}
         )
         
         content = response.choices[0].message.content.strip()
         final_analysis = json.loads(content)
+        
+        # 텍스트 필드 정제 (UUID 제거 + 영문→한글)
+        for key in ['decision_summary', 'legal_issues_summary', 'evidence_sufficiency_summary', 'remaining_risk_summary']:
+            if key in final_analysis and isinstance(final_analysis[key], str):
+                final_analysis[key] = _sanitize_text(final_analysis[key])
         
         print(f"\n✅ 최종 판단 생성 완료")
         print(f"   📋 송치 의견: {final_analysis.get('recommended_decision')}")

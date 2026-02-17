@@ -55,6 +55,16 @@ def format_case_info(case_json: dict) -> str:
     return "\n".join(info_parts)
 
 
+_UUID_RE = re.compile(r'\(?\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b\)?')
+
+def _strip_ids_and_uuids(text: str) -> str:
+    """temp_id + UUID 모두 제거"""
+    text = _strip_temp_ids(text)
+    text = _UUID_RE.sub('', text)
+    text = re.sub(r'\s{2,}', ' ', text).strip()
+    text = re.sub(r'\(\s*\)', '', text).strip()
+    return text
+
 def _strip_temp_ids(text: str) -> str:
     """description 텍스트에서 temp_id 참조를 제거 (예: (ks-2), ks-10 등)"""
     text = re.sub(r'\(?(?:ks|ct|tr|q)-\d+\)?', '', text)
@@ -711,8 +721,8 @@ class AudioAnalyzer:
                     "temp_id": str(item.get("temp_id", f"{q_prefix}-{i}")),
                     "contradiction_id": str(item.get("contradiction_id", "")),
                     "target": str(item.get("target", "")),
-                    "question": str(item.get("question", "")),
-                    "rationale": str(item.get("rationale", ""))
+                    "question": _strip_ids_and_uuids(str(item.get("question", ""))),
+                    "rationale": _strip_ids_and_uuids(str(item.get("rationale", "")))
                 })
             return validated
         except json.JSONDecodeError:
@@ -749,8 +759,8 @@ class AudioAnalyzer:
                     "temp_id": str(item.get("temp_id", f"{q_prefix}-{i}")),
                     "contradiction_id": str(item.get("contradiction_id", "")),
                     "target": str(item.get("target", "")),
-                    "question": str(item.get("question", "")),
-                    "rationale": str(item.get("rationale", ""))
+                    "question": _strip_ids_and_uuids(str(item.get("question", ""))),
+                    "rationale": _strip_ids_and_uuids(str(item.get("rationale", "")))
                 })
             return validated
         except json.JSONDecodeError:
