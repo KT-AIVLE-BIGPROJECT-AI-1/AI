@@ -519,7 +519,7 @@ class InvestigationFileService:
 
 모순이면:
 - type: TIME|LOCATION|ACTION|INTENT|CROSS_FILE
-- description: 두 진술이 어떻게 모순되는지 설명
+- description: 두 진술이 어떻게 모순되는지 설명. temp_id(ks-N 등)는 포함하지 말고 진술자 이름과 내용만으로 설명할 것
 - question_for_a: 진술 A 관련자에게 할 질문
 - question_for_b: 진술 B 관련자에게 할 질문
 - rationale: 질문 근거
@@ -560,6 +560,9 @@ class InvestigationFileService:
 
                         c_type = result.get("type", "CROSS_FILE")
                         description = result.get("description", "")
+                        # description에서 temp_id 참조 제거
+                        description = re.sub(r'\(?(?:ks|ct|tr|q)-\d+\)?', '', description)
+                        description = re.sub(r'\s{2,}', ' ', description).strip()
 
                         # ── 의미적 중복 필터링 ──
                         # 이미 발견된 모순과 description이 유사하면 스킵
