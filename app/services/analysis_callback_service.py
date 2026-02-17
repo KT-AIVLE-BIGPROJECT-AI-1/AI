@@ -65,7 +65,9 @@ class AnalysisCallbackService:
                     AnalysisCallbackService._callback_storage = json.load(f)
                 print(f"   ✅ 콜백 저장소 복원: {len(AnalysisCallbackService._callback_storage)}건")
             except Exception as e:
-                print(f"   ⚠️ 콜백 저장소 복원 실패: {e}")
+                print(f"   ⚠️ 콜백 저장소 복원 실패 (깨진 파일 삭제): {e}")
+                _CALLBACKS_FILE.unlink(missing_ok=True)
+                AnalysisCallbackService._callback_storage = {}
         else:
             print(f"   ℹ️ 저장된 콜백 저장소 없음")
 
@@ -97,10 +99,29 @@ class AnalysisCallbackService:
 
         payload = request.payload
 
+        # ✅ Pydantic 모델을 dict로 변환 (JSON 직렬화 보장)
         if isinstance(payload, list):
-            AnalysisCallbackService._callback_storage[case_id][analysis_id][stage].extend(payload)
+            converted = []
+            for item in payload:
+                if hasattr(item, "model_dump"):
+                    converted.append(item.model_dump())
+                elif hasattr(item, "dict"):
+                    converted.append(item.dict())
+                elif isinstance(item, dict):
+                    converted.append(item)
+                else:
+                    converted.append(str(item))
+            AnalysisCallbackService._callback_storage[case_id][analysis_id][stage].extend(converted)
         else:
-            AnalysisCallbackService._callback_storage[case_id][analysis_id][stage].append(payload)
+            if hasattr(payload, "model_dump"):
+                converted = payload.model_dump()
+            elif hasattr(payload, "dict"):
+                converted = payload.dict()
+            elif isinstance(payload, dict):
+                converted = payload
+            else:
+                converted = str(payload)
+            AnalysisCallbackService._callback_storage[case_id][analysis_id][stage].append(converted)
 
         # ✅ 디스크 동기화
         AnalysisCallbackService._save_callbacks_to_disk()

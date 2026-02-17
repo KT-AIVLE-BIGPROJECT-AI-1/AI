@@ -27,11 +27,17 @@ class CriteriaEvaluation(BaseModel):
     evidence_gap: str
 
 
+class LegalIssueRef(BaseModel):
+    issue_name: str
+    related_law: str
+
+
 class LegalCriterion(BaseModel):
     criterion_text: str
     precedent_case_no: Optional[str] = None
     precedent_decision_date: Optional[str] = None
-    evaluation: CriteriaEvaluation
+    criteria_evaluation: Optional[CriteriaEvaluation] = None
+    legal_issue: Optional[LegalIssueRef] = None
 
 
 class LegalIssue(BaseModel):

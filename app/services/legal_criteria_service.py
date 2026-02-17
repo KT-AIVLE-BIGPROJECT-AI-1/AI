@@ -44,7 +44,7 @@ def generate_precedent_search_keywords(issue: Dict[str, str]) -> str:
     resp = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.0
+        temperature=0.2
     )
     
     return resp.choices[0].message.content.strip()
@@ -114,8 +114,6 @@ class LegalCriteriaService:
 - 각 쟁점은 반드시 "~죄 성립 여부" 형식
 - 2~4개 생성
 - 각 쟁점마다 하나의 related_law 필수
-- 입력된 사건 사실과 형법 조문에 없는 내용을 절대로 생성하지 마십시오
-- 사건 사실에서 확인할 수 없는 범죄 유형을 추측하여 추가하지 마십시오
 
 JSON만 출력:
 {{
@@ -126,9 +124,9 @@ JSON만 출력:
 """
         
         resp = client.chat.completions.create(
-            model="gpt-4.1",
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt_issue}],
-            temperature=0.0,
+            temperature=0.2,
         )
         
         issues_data = _clean_json(resp.choices[0].message.content)
@@ -167,7 +165,6 @@ JSON만 출력:
 - 각 항목 "~ 여부" 형식
 - 5~8개
 - criterion_text에 조문 번호 포함
-- 제공된 형법 조문과 사건 요약에 없는 기준을 절대로 생성하지 마십시오
 
 JSON만 출력:
 {{
@@ -176,9 +173,9 @@ JSON만 출력:
 """
             
             resp_criteria = client.chat.completions.create(
-                model="gpt-4.1",
+                model="gpt-4o",
                 messages=[{"role": "user", "content": prompt_criteria}],
-                temperature=0.0,
+                temperature=0.2,
             )
             
             criteria_data = _clean_json(resp_criteria.choices[0].message.content)
@@ -229,15 +226,19 @@ JSON만 출력:
                         "precedent_decision_date": "0000-00-00"
                     }
                 
-                # ✅ API 스펙 준수
+                # ✅ API 스펙 준수 (Spring 필드명 매칭)
                 legal_criteria_list.append({
                     "criterion_text": criterion_text,
                     "precedent_case_no": assigned_precedent["precedent_case_no"],
                     "precedent_decision_date": assigned_precedent["precedent_decision_date"],
-                    "evaluation": {
+                    "criteria_evaluation": {
                         "status": "INSUFFICIENT",
                         "reason": f"{criterion_text}을 판단하기 위한 증거가 불충분합니다.",
                         "evidence_gap": f"{criterion_text}을 확인할 수 있는 증거가 필요합니다."
+                    },
+                    "legal_issue": {
+                        "issue_name": issue_name,
+                        "related_law": related_law
                     }
                 })
             
