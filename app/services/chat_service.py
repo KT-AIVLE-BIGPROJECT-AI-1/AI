@@ -16,6 +16,19 @@ class ChatService:
     _chat_history: List[Dict[str, str]] = []
     MAX_HISTORY = 20
 
+    @staticmethod
+    def _format_time(seconds) -> str:
+        """초 → 'N분 N초' 형식 변환 (예: 119.5 → '1분 59초')"""
+        try:
+            total = float(seconds)
+        except (TypeError, ValueError):
+            return f"{seconds}초"
+        minutes = int(total // 60)
+        secs = int(total % 60)
+        if minutes > 0:
+            return f"{minutes}분 {secs}초"
+        return f"{secs}초"
+
     # 프레임이 있을 때 사용하는 시스템 프롬프트
     SYSTEM_PROMPT_WITH_FRAMES = """당신은 수사 보조 AI 어시스턴트입니다.
 
@@ -33,8 +46,7 @@ class ChatService:
 - 시간대별 프레임을 참고하여 시간 기반 질문에도 답변할 것
 - 여러 영상이 있을 경우, 영상 간 시간 흐름·장소 이동·인물 동선 등을 종합하여 교차 분석할 것
 - 수사관이 대화 중 제공하는 정보(동일인물, 시간 관계, 장소 연결 등)는 수사관 확인 사실로 반영하여 교차 분석에 적극 활용할 것
-- 영상 분석 결과와 프레임 이미지에 없는 내용을 절대로 생성하지 마십시오
-- 확인할 수 없는 사실을 추측하거나 가정하지 마십시오
+- 시간을 언급할 때는 반드시 'N분 N초' 형식으로 표기할 것 (예: 119초 → 1분 59초). 소수점 초 단위는 사용하지 말 것
 """
 
     # 프레임이 없을 때 사용하는 시스템 프롬프트 (기존)
@@ -50,8 +62,7 @@ class ChatService:
 - 추정, 단정, 법적 판단 금지
 - 여러 영상이 있을 경우, 영상 간 시간 흐름·장소 이동·인물 동선 등을 종합하여 교차 분석할 것
 - 수사관이 대화 중 제공하는 정보(동일인물, 시간 관계, 장소 연결 등)는 수사관 확인 사실로 반영하여 교차 분석에 적극 활용할 것
-- 영상 분석 결과에 없는 내용을 절대로 생성하지 마십시오
-- 확인할 수 없는 사실을 추측하거나 가정하지 마십시오
+- 시간을 언급할 때는 반드시 'N분 N초' 형식으로 표기할 것 (예: 119초 → 1분 59초). 소수점 초 단위는 사용하지 말 것
 """
 
     # 🔥 OpenAI role 변환
@@ -134,8 +145,9 @@ class ChatService:
             lines.append(f"\n--- 영상 {idx}: {src['origin_name']} ---")
 
             for event in src["events"]:
+                start = ChatService._format_time(event.get('start_time'))
                 lines.append(
-                    f"[{event.get('start_time')}초 ~ {event.get('end_time')}초] "
+                    f"[{start}] "
                     f"{event.get('event_type')} - {event.get('event_description')}"
                 )
 
@@ -173,7 +185,7 @@ class ChatService:
             if frame.get("base64"):
                 system_content.append({
                     "type": "text",
-                    "text": f"[{frame['origin_name']} - {frame['time_sec']}초]"
+                    "text": f"[{frame['origin_name']} - {ChatService._format_time(frame['time_sec'])}]"
                 })
                 system_content.append({
                     "type": "image_url",
@@ -270,9 +282,9 @@ class ChatService:
                 )
 
             response = client.chat.completions.create(
-                model="gpt-4.1",
+                model="gpt-4o",
                 messages=messages,
-                temperature=0.0,
+                temperature=0.4,
                 max_tokens=1500
             )
 
