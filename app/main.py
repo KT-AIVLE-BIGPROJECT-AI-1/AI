@@ -175,17 +175,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(cases_router, prefix="/ai")
-app.include_router(legal_criteria_router, prefix="/ai")
-app.include_router(criteria_evaluation_router, prefix="/ai")
-app.include_router(investigation_files_router, prefix="/ai")
-app.include_router(analysis_callback_router, prefix="/ai")
-app.include_router(analysis_final_router, prefix="/ai")
-app.include_router(report_interim_router, prefix="/ai")
-app.include_router(report_final_router, prefix="/ai")
-app.include_router(report_decision_router, prefix="/ai")
-app.include_router(chat_router, prefix="/ai")
-app.include_router(reports_router, prefix="/ai")
+app.include_router(cases_router)
+app.include_router(legal_criteria_router)
+app.include_router(criteria_evaluation_router)
+app.include_router(investigation_files_router)
+app.include_router(analysis_callback_router)
+app.include_router(analysis_final_router)
+app.include_router(report_interim_router)
+app.include_router(report_final_router)
+app.include_router(report_decision_router)
+app.include_router(chat_router)
+app.include_router(reports_router)
 
 
 @app.get("/")
@@ -195,19 +195,18 @@ async def root():
         "version": "1.0.0",
         "status": "running",
         "docs": "/docs",
-        "ai_base": "/ai",
         "endpoints": {
             "0. HEALTH CHECK": "GET /health",
-            "1. CASE": "POST /ai/cases/summary",
-            "2. LEGAL_CRITERIA": "POST /ai/legal-criteria",
-            "3. CRITERIA_EVALUATION": "POST /ai/legal-criteria/evaluate",
-            "4. UPLOAD + 분석": "POST /ai/analysis/upload",
-            "5. CALLBACK": "POST /ai/cases/{case_id}/analysis/{analysis_id}/callback",
-            "6. FINAL_ANALYSIS": "POST /ai/analysis/final",
-            "7. CHAT": "POST /ai/chat/respond",
-            "8. REPORT_INTERIM": "POST /ai/reports/interim",
-            "9. REPORT_FINAL": "POST /ai/reports/final",
-            "10. REPORT_DECISION": "POST /ai/reports/decision"
+            "1. CASE": "POST /cases/summary",
+            "2. LEGAL_CRITERIA": "POST /legal-criteria",
+            "3. CRITERIA_EVALUATION": "POST /legal-criteria/evaluate",
+            "4. UPLOAD + 분석": "POST /analysis/upload",
+            "5. CALLBACK": "POST /cases/{case_id}/analysis/{analysis_id}/callback",
+            "6. FINAL_ANALYSIS": "POST /analysis/final",
+            "7. CHAT": "POST /chat/respond",
+            "8. REPORT_INTERIM": "POST /reports/interim",
+            "9. REPORT_FINAL": "POST /reports/final",
+            "10. REPORT_DECISION": "POST /reports/decision"
         }
     })
 
